@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GPU Architecture Explorer — 3D Silicon Dissector</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  :root{
+    --bg:#f8fafc; --panel:#ffffff; --ink:#0f172a; --ink-soft:#64748b; --line:#e2e8f0;
+    --accent:#10b981; --accent-soft:#ecfdf5; --tensor:#f59e0b; --tensor-soft:#fef3c7;
+    --mem:#0284c7; --mem-soft:#e0f2fe; --sched:#8b5cf6; --sched-soft:#f5f3ff;
+    --radius:12px; --shadow:0 4px 6px -1px rgba(0,0,0,0.05), 0 10px 25px -3px rgba(0,0,0,0.08);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;background:var(--bg);overflow:hidden;
+    font-family:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",Helvetica,Arial,sans-serif;
+    color:var(--ink);-webkit-font-smoothing:antialiased;}
+  #stage{position:fixed;inset:0;touch-action:none;}
+  canvas{display:block;cursor:grab;}
+  canvas:active{cursor:grabbing;}
+
+  /* Top Bar */
+  #topbar{position:fixed;top:0;left:0;right:0;display:flex;align-items:center;
+    justify-content:space-between;padding:16px 32px;pointer-events:none;z-index:30;}
+  
+  .topbar-left{display:flex;align-items:center;gap:14px;pointer-events:auto;}
+  #wordmark{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink);
+    font-weight:700;display:flex;align-items:center;gap:10px;}
+  .nvidia-badge{background:#000;color:#fff;padding:4px 8px;border-radius:6px;font-size:10.5px;
+    font-weight:800;letter-spacing:.5px;display:flex;align-items:center;gap:5px;}
+  .nvidia-dot{width:7px;height:7px;border-radius:50%;background:#76b900;}
+  #wordmark span{color:var(--ink-soft);font-weight:400;margin-left:4px;letter-spacing:.06em;}
+  
+  /* Auto Tour Button */
+  .tour-btn{font-family:inherit;font-size:11.5px;font-weight:700;letter-spacing:.03em;
+    background:var(--panel);color:var(--ink);border:1px solid var(--line);padding:7px 16px;
+    border-radius:100px;cursor:pointer;display:flex;align-items:center;gap:7px;box-shadow:var(--shadow);
+    transition:all .18s;}
+  .tour-btn:hover{background:var(--accent-soft);color:var(--accent);border-color:var(--accent);}
+  .tour-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 0 0 3.5px var(--accent-soft);}
+  .tour-btn .icon{font-size:10px;}
+
+  .topbar-right{display:flex;align-items:center;gap:12px;pointer-events:auto;}
+  
+  /* Social Links Pill */
+  #social-pill{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.92);
+    backdrop-filter:blur(8px);border:1px solid var(--line);padding:5px 12px;border-radius:100px;
+    box-shadow:var(--shadow);}
+  #social-pill a{display:flex;align-items:center;justify-content:center;transition:transform .15s;}
+  #social-pill a:hover{transform:scale(1.15);}
+  .social-icon{width:18px;height:18px;object-fit:contain;display:block;}
+  .social-handle{font-size:11.5px;font-weight:600;color:var(--ink);letter-spacing:.02em;margin-left:2px;}
+
+  #stagepill{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--ink-soft);background:var(--panel);border:1px solid var(--line);
+    padding:7px 15px;border-radius:100px;box-shadow:var(--shadow);}
+  #stagepill b{color:var(--ink);font-weight:700;}
+
+  /* Left Layer Components Directory */
+  #left-panel{position:fixed;left:32px;top:76px;bottom:32px;width:280px;z-index:25;
+    background:rgba(255,255,255,0.92);backdrop-filter:blur(12px);border:1px solid var(--line);
+    border-radius:var(--radius);box-shadow:var(--shadow);display:flex;flex-direction:column;
+    overflow:hidden;transition:all .3s;}
+  .panel-header{padding:12px 16px;border-bottom:1px solid var(--line);background:rgba(248,250,252,0.85);}
+  .panel-title{font-size:10px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--ink-soft);margin-bottom:2px;}
+  .panel-subtitle{font-size:13px;font-weight:700;color:var(--ink);}
+  
+  #comp-list{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:5px;}
+  .comp-item{padding:9px 11px;border-radius:8px;border:1px solid transparent;cursor:pointer;
+    transition:all .18s;display:flex;align-items:center;justify-content:space-between;}
+  .comp-item:hover{background:rgba(241,245,249,0.8);border-color:var(--line);}
+  .comp-item.active{background:#ffffff;border-color:var(--accent);box-shadow:0 2px 8px rgba(16,185,129,0.15);}
+  .comp-item-left{display:flex;align-items:center;gap:8px;}
+  .comp-dot{width:8px;height:8px;border-radius:30%;background:#94a3b8;flex-shrink:0;transition:all .2s;}
+  .comp-item.active .comp-dot{background:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
+  .comp-item.tensor.active .comp-dot{background:var(--tensor);box-shadow:0 0 0 3px var(--tensor-soft);}
+  .comp-item.mem.active .comp-dot{background:var(--mem);box-shadow:0 0 0 3px var(--mem-soft);}
+  .comp-item.sched.active .comp-dot{background:var(--sched);box-shadow:0 0 0 3px var(--sched-soft);}
+  .comp-name{font-size:11.5px;font-weight:600;color:var(--ink);}
+  .comp-badge{font-size:9px;font-family:monospace;color:var(--ink-soft);background:rgba(241,245,249,0.9);padding:2px 5px;border-radius:4px;}
+
+  /* Translucent & Wider Info Detail Card (Low Profile) */
+  #detail-card{position:fixed;left:328px;bottom:28px;width:580px;max-width:calc(100vw - 420px);z-index:25;
+    background:rgba(255,255,255,0.84);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+    border:1px solid rgba(226,232,240,0.9);border-radius:var(--radius);
+    box-shadow:0 8px 30px -4px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+    padding:13px 18px;display:none;animation:slideUp .25s ease;}
+  @keyframes slideUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+  #detail-card.show{display:block;}
+  .detail-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+  .detail-header-left{display:flex;align-items:center;gap:9px;}
+  .detail-type{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;padding:2px 7px;border-radius:20px;}
+  #detail-title{font-size:14.5px;font-weight:700;margin:0;color:var(--ink);}
+  .detail-close{cursor:pointer;color:var(--ink-soft);font-size:16px;line-height:1;border:none;background:none;padding:2px;}
+  .detail-close:hover{color:var(--ink);}
+  
+  .detail-body{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start;}
+  #detail-desc{font-size:11.5px;line-height:1.5;color:var(--ink-soft);margin:0;}
+  #detail-specs{padding:8px 10px;background:rgba(248,250,252,0.8);border-radius:7px;border:1px dashed var(--line);
+    font-size:10.5px;color:var(--ink-soft);font-family:monospace;display:flex;flex-direction:column;gap:3px;}
+  #detail-specs b{color:var(--ink);}
+
+  /* Pinned 3D Floating Name Tags */
+  .tag3d{position:absolute;z-index:15;pointer-events:auto;transform:translate(-50%,-50%);
+    transition:opacity .2s, transform .2s;cursor:pointer;user-select:none;}
+  .tag3d .tag-inner{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.94);
+    backdrop-filter:blur(6px);border:1px solid rgba(226,232,240,0.9);padding:3px 8px;border-radius:6px;
+    box-shadow:0 2px 6px rgba(0,0,0,0.06);font-size:10.5px;font-weight:600;color:var(--ink);white-space:nowrap;
+    transition:all .15s;}
+  .tag3d:hover .tag-inner, .tag3d.active .tag-inner{background:#ffffff;border-color:var(--accent);transform:scale(1.08);box-shadow:0 0 0 3px var(--accent-soft);}
+  .tag3d.tensor:hover .tag-inner, .tag3d.tensor.active .tag-inner{border-color:var(--tensor);box-shadow:0 0 0 3px var(--tensor-soft);}
+  .tag3d.mem:hover .tag-inner, .tag3d.mem.active .tag-inner{border-color:var(--mem);box-shadow:0 0 0 3px var(--mem-soft);}
+  .tag3d.sched:hover .tag-inner, .tag3d.sched.active .tag-inner{border-color:var(--sched);box-shadow:0 0 0 3px var(--sched-soft);}
+  
+  .tag3d .tag-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);}
+  .tag3d.tensor .tag-dot{background:var(--tensor);}
+  .tag3d.mem .tag-dot{background:var(--mem);}
+  .tag3d.sched .tag-dot{background:var(--sched);}
+
+  /* Dissection Slider with Magnetic Nodes */
+  #dissectwrap{position:fixed;right:160px;top:50%;transform:translateY(-50%);z-index:25;
+    display:flex;align-items:center;height:65vh;max-height:520px;}
+  #dissectlabel{position:absolute;top:-36px;left:50%;transform:translateX(-50%);
+    font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);white-space:nowrap;font-weight:700;}
+  #track{position:relative;width:34px;height:100%;display:flex;justify-content:center;cursor:pointer;touch-action:none;}
+  #trackline{position:absolute;top:0;bottom:0;width:4px;background:#e2e8f0;border-radius:4px;}
+  #trackfill{position:absolute;top:0;width:4px;background:var(--accent);border-radius:4px;height:0;}
+  #handle{position:absolute;left:50%;width:22px;height:22px;border-radius:50%;background:#fff;
+    border:3px solid var(--accent);transform:translate(-50%,-50%);box-shadow:var(--shadow);cursor:grab;top:0;z-index:3;}
+  #handle:active{cursor:grabbing;transform:translate(-50%,-50%) scale(1.18);}
+  
+  .stop{position:absolute;left:20px;display:flex;align-items:center;gap:12px;transform:translateY(-50%);
+    cursor:pointer;white-space:nowrap;user-select:none;transition:transform .15s;}
+  .stop:hover{transform:translateY(-50%) translateX(3px);}
+  .stop .node-btn{width:15px;height:15px;border-radius:50%;background:#fff;border:2.5px solid #cbd5e1;
+    box-shadow:0 1px 3px rgba(0,0,0,.1);transition:all .2s;flex-shrink:0;}
+  .stop:hover .node-btn{border-color:var(--accent);transform:scale(1.25);}
+  .stop .lbl{font-size:11.5px;letter-spacing:.02em;color:var(--ink-soft);transition:color .2s,font-weight .2s;}
+  .stop.active .lbl{color:var(--ink);font-weight:700;}
+  .stop.active .node-btn{background:var(--accent);border-color:var(--accent);transform:scale(1.35);box-shadow:0 0 0 3.5px var(--accent-soft);}
+
+  /* Bottom Controls Hint */
+  #controlshint{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:20;
+    display:flex;gap:18px;font-size:11px;color:var(--ink-soft);background:rgba(255,255,255,0.92);
+    backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:100px;
+    padding:7px 18px;box-shadow:var(--shadow);}
+  #controlshint b{color:var(--ink);font-weight:600;}
+</style>
+</head>
+<body>
+
+<div id="stage"></div>
+
+<div id="topbar">
+  <div class="topbar-left">
+    <div id="wordmark">
+      <div class="nvidia-badge"><span class="nvidia-dot"></span> NVIDIA</div>
+      GPU ARCHITECTURE <span>· 3D Silicon Dissector</span>
+    </div>
+    <button id="auto-tour-btn" class="tour-btn"><span class="icon">▶</span> Auto Tour</button>
+  </div>
+
+  <div class="topbar-right">
+    <div id="social-pill">
+      <a href="https://github.com/ujwal-s-r" target="_blank" rel="noopener noreferrer" title="GitHub Profile">
+        <img src="git.png" alt="GitHub" class="social-icon">
+      </a>
+      <a href="https://www.linkedin.com/in/ujwal-s-r/" target="_blank" rel="noopener noreferrer" title="LinkedIn Profile">
+        <img src="link.png" alt="LinkedIn" class="social-icon">
+      </a>
+      <span class="social-handle">@ujwal-s-r</span>
+    </div>
+    <div id="stagepill">Viewing: <b id="stagename">Closed Card</b></div>
+  </div>
+</div>
+
+<!-- Left Layer Components Directory -->
+<div id="left-panel">
+  <div class="panel-header">
+    <div class="panel-title">Layer Components</div>
+    <div class="panel-subtitle" id="panel-stage-title">Level 0: Closed Card</div>
+  </div>
+  <div id="comp-list"></div>
+</div>
+
+<!-- Translucent Wider Info Detail Card -->
+<div id="detail-card">
+  <div class="detail-top">
+    <div class="detail-header-left">
+      <span class="detail-type" id="detail-badge" style="background:var(--accent-soft);color:var(--accent);">Component</span>
+      <h3 id="detail-title">Component Name</h3>
+    </div>
+    <button class="detail-close" id="detail-close-btn">&times;</button>
+  </div>
+  <div class="detail-body">
+    <p id="detail-desc">Component description and architecture role.</p>
+    <div id="detail-specs"></div>
+  </div>
+</div>
+
+<!-- Dissection Slider with Magnetic Nodes -->
+<div id="dissectwrap">
+  <div id="dissectlabel">Dissection</div>
+  <div id="track">
+    <div id="trackline"></div>
+    <div id="trackfill"></div>
+    <div id="handle"></div>
+  </div>
+</div>
+
+<!-- Floating 3D Component Labels Container -->
+<div id="tag-container"></div>
+
+<!-- Bottom Navigation Hint -->
+<div id="controlshint">
+  <div><b>Drag</b> to rotate</div>
+  <div><b>Scroll</b> to zoom</div>
+  <div><b>Click component</b> to inspect</div>
+</div>
+
+<script>
+/* =========================================================================
+   SCENE & STUDIO LIGHTING SETUP
+   ========================================================================= */
+const stageEl = document.getElementById('stage');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf8fafc);
+
+const camera = new THREE.PerspectiveCamera(35, window.innerWidth/window.innerHeight, 0.1, 400);
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+stageEl.appendChild(renderer.domElement);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.85));
+const key = new THREE.DirectionalLight(0xffffff, 1.15);
+key.position.set(14, 22, 16); key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+key.shadow.camera.left = -16; key.shadow.camera.right = 16;
+key.shadow.camera.top = 16; key.shadow.camera.bottom = -16;
+key.shadow.bias = -0.0012;
+scene.add(key);
+
+const fill = new THREE.DirectionalLight(0xe0f2fe, 0.65);
+fill.position.set(-15, 12, -12);
+scene.add(fill);
+
+const rim = new THREE.DirectionalLight(0x76b900, 0.4);
+rim.position.set(0, -8, 14);
+scene.add(rim);
+
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(240,240), new THREE.ShadowMaterial({opacity:0.07}));
+ground.rotation.x = -Math.PI/2; ground.position.y = -2.4; ground.receiveShadow = true;
+scene.add(ground);
+
+/* =========================================================================
+   MATERIALS
+   ========================================================================= */
+function fadeMat(opts){ return new THREE.MeshStandardMaterial(Object.assign({transparent:true}, opts)); }
+const M = {
+  shroud: fadeMat({color:0x1e2229, roughness:0.35, metalness:0.6}),
+  shroudBevel: fadeMat({color:0x3b424d, roughness:0.25, metalness:0.8}),
+  fan: fadeMat({color:0x15181b, roughness:0.6, metalness:0.25}),
+  fanHub: fadeMat({color:0xd1d5db, roughness:0.2, metalness:0.95}),
+  bracket: fadeMat({color:0xb7bac0, roughness:0.3, metalness:0.85}),
+  backplate: fadeMat({color:0x64748b, roughness:0.35, metalness:0.75}),
+  heatsinkFin: fadeMat({color:0x94a3b8, roughness:0.35, metalness:0.85}),
+  copperPipe: fadeMat({color:0xd97706, roughness:0.2, metalness:0.95}),
+  pcb: fadeMat({color:0x064e3b, roughness:0.55, metalness:0.3}),
+  vram: fadeMat({color:0x0f172a, roughness:0.35, metalness:0.7, emissive:0x0284c7, emissiveIntensity:0.25}),
+  vrm: fadeMat({color:0x1e293b, roughness:0.4, metalness:0.5}),
+  cap: fadeMat({color:0x334155, roughness:0.3, metalness:0.6}),
+  finger: fadeMat({color:0xeab308, roughness:0.25, metalness:0.9}),
+  substrate: fadeMat({color:0x334155, roughness:0.45, metalness:0.5}),
+  die: fadeMat({color:0x0f172a, roughness:0.2, metalness:0.85, emissive:0x0369a1, emissiveIntensity:0.25}),
+  l2: fadeMat({color:0x7c3aed, roughness:0.35, metalness:0.4, emissive:0x6d28d9, emissiveIntensity:0.4}),
+  gpc: fadeMat({color:0x1e293b, roughness:0.4, metalness:0.4}),
+  smFrame: new THREE.MeshStandardMaterial({color:0x0f172a, roughness:0.2, metalness:0.85}),
+  subcore0: new THREE.MeshStandardMaterial({color:0x1e293b, roughness:0.3, metalness:0.5}),
+  subcore1: new THREE.MeshStandardMaterial({color:0x1e293b, roughness:0.3, metalness:0.5}),
+  subcore2: new THREE.MeshStandardMaterial({color:0x1e293b, roughness:0.3, metalness:0.5}),
+  subcore3: new THREE.MeshStandardMaterial({color:0x1e293b, roughness:0.3, metalness:0.5}),
+  subcoreDivider: new THREE.MeshStandardMaterial({color:0x475569, roughness:0.2, metalness:0.9}),
+  warpSched: new THREE.MeshStandardMaterial({color:0x8b5cf6, roughness:0.3, metalness:0.4, emissive:0x7c3aed, emissiveIntensity:0.35}),
+  regfile: new THREE.MeshStandardMaterial({color:0xf59e0b, roughness:0.35, metalness:0.3, emissive:0xd97706, emissiveIntensity:0.35}),
+  cuda: new THREE.MeshStandardMaterial({color:0x10b981, roughness:0.3, metalness:0.3, emissive:0x059669, emissiveIntensity:0.4}),
+  tensor: new THREE.MeshStandardMaterial({color:0xf59e0b, roughness:0.3, metalness:0.3, emissive:0xd97706, emissiveIntensity:0.5}),
+  sharedmem: new THREE.MeshStandardMaterial({color:0x0284c7, roughness:0.3, metalness:0.4, emissive:0x0369a1, emissiveIntensity:0.4}),
+  l1cache: new THREE.MeshStandardMaterial({color:0x6366f1, roughness:0.3, metalness:0.4, emissive:0x4f46e5, emissiveIntensity:0.35}),
+};
+
+function box(w,h,d,mat){ return new THREE.Mesh(new THREE.BoxGeometry(w,h,d), mat); }
+function cyl(r1,r2,h,seg,mat){ return new THREE.Mesh(new THREE.CylinderGeometry(r1,r2,h,seg), mat); }
+
+const root = new THREE.Group();
+scene.add(root);
+const CARD_W = 10.2, CARD_D = 3.6;
+
+/* =========================================================================
+   1. LEVEL 0: SHROUD & DUAL AXIAL COOLING FANS
+   ========================================================================= */
+const shroudGroup = new THREE.Group();
+shroudGroup.userData = { id:'shroud', range:[0.00, 0.16], origin:new THREE.Vector3(0, 0.85, 0), offset:new THREE.Vector3(0, 4.4, 0) };
+
+const shroudBody = box(CARD_W, 0.95, CARD_D, M.shroud);
+shroudBody.castShadow = true; shroudBody.userData.tagId='shroud';
+shroudGroup.add(shroudBody);
+
+const shroudBevel = box(CARD_W+0.05, 0.12, CARD_D+0.05, M.shroudBevel);
+shroudBevel.position.y = 0.44;
+shroudGroup.add(shroudBevel);
+
+const fanRotators = [];
+[-2.4, 2.4].forEach(fx=>{
+  const well = cyl(1.48, 1.48, 0.25, 32, M.fan);
+  well.position.set(fx, 0.42, 0); well.castShadow = true;
+  well.userData.tagId = 'fans';
+  shroudGroup.add(well);
+
+  const fanAssembly = new THREE.Group();
+  fanAssembly.position.set(fx, 0.48, 0);
+  const hub = cyl(0.35, 0.35, 0.22, 18, M.fanHub);
+  fanAssembly.add(hub);
+
+  for(let b=0; b<9; b++){
+    const ang = (b/9) * Math.PI * 2;
+    const blade = box(1.05, 0.035, 0.24, M.fan);
+    blade.position.set(Math.cos(ang)*0.55, 0.02, Math.sin(ang)*0.55);
+    blade.rotation.y = -ang;
+    blade.rotation.z = 0.28;
+    fanAssembly.add(blade);
+  }
+  fanAssembly.userData.tagId = 'fans';
+  shroudGroup.add(fanAssembly);
+  fanRotators.push(fanAssembly);
+});
+
+for(let g=-1.4; g<=1.4; g+=0.28){
+  const slat = box(0.04, 0.55, 0.16, M.bracket);
+  slat.position.set(CARD_W/2-0.02, 0, g);
+  shroudGroup.add(slat);
+}
+
+const bracketPlate = box(0.08, 1.8, CARD_D+0.4, M.bracket);
+bracketPlate.position.set(-CARD_W/2 - 0.08, -0.2, 0);
+shroudGroup.add(bracketPlate);
+
+shroudGroup.position.copy(shroudGroup.userData.origin);
+root.add(shroudGroup);
+
+/* =========================================================================
+   2. LEVEL 1: HEATSINK & COPPER HEATPIPES
+   ========================================================================= */
+const heatsinkGroup = new THREE.Group();
+heatsinkGroup.userData = { id:'heatsink', range:[0.12, 0.28], origin:new THREE.Vector3(0, 0.35, 0), offset:new THREE.Vector3(0, 2.7, 0) };
+
+const finCount = 38;
+const startX = -(finCount * 0.24)/2;
+for(let i=0; i<finCount; i++){
+  const fin = box(0.04, 0.72, CARD_D-0.3, M.heatsinkFin);
+  fin.position.set(startX + i*0.24, 0, 0);
+  fin.castShadow = true; fin.userData.tagId = 'fins';
+  heatsinkGroup.add(fin);
+}
+for(let p=-1.1; p<=1.1; p+=0.72){
+  const pipe = cyl(0.11, 0.11, CARD_W-1.2, 12, M.copperPipe);
+  pipe.rotation.z = Math.PI/2;
+  pipe.position.set(0, -0.05, p);
+  pipe.userData.tagId = 'pipes';
+  heatsinkGroup.add(pipe);
+}
+heatsinkGroup.position.copy(heatsinkGroup.userData.origin);
+root.add(heatsinkGroup);
+
+/* =========================================================================
+   3. LEVEL 2: BACKPLATE
+   ========================================================================= */
+const backplateGroup = new THREE.Group();
+backplateGroup.userData = { id:'backplate', range:[0.04, 0.20], origin:new THREE.Vector3(0, -0.65, 0), offset:new THREE.Vector3(0, -2.6, 0) };
+const backplate = box(CARD_W, 0.10, CARD_D, M.backplate);
+backplate.castShadow = true; backplate.userData.tagId = 'backplate';
+backplateGroup.add(backplate);
+backplateGroup.position.copy(backplateGroup.userData.origin);
+root.add(backplateGroup);
+
+/* =========================================================================
+   4. LEVEL 3: PCB & DEDICATED VRAM MODULES
+   ========================================================================= */
+const pcbGroup = new THREE.Group();
+pcbGroup.userData = { id:'pcb', range:[0.22, 0.40], origin:new THREE.Vector3(0, -0.15, 0), offset:new THREE.Vector3(0, -0.6, 0) };
+
+const pcbBoard = box(CARD_W-0.2, 0.12, CARD_D-0.15, M.pcb);
+pcbBoard.castShadow = true; pcbBoard.receiveShadow = true; pcbBoard.userData.tagId = 'pcb';
+pcbGroup.add(pcbBoard);
+
+const vramChips = [];
+const vramPositions = [
+  [-1.9, -1.2], [-0.7, -1.2], [0.5, -1.2], [1.7, -1.2],
+  [-1.9,  1.2], [-0.7,  1.2], [0.5,  1.2], [1.7,  1.2]
+];
+vramPositions.forEach(([vx, vz])=>{
+  const chip = box(0.85, 0.14, 0.85, M.vram);
+  chip.position.set(vx, 0.12, vz); chip.castShadow = true;
+  chip.userData.tagId = 'vram';
+  pcbGroup.add(chip); vramChips.push(chip);
+});
+
+for(let r=0; r<6; r++){
+  const vrm = box(0.4, 0.16, 0.35, M.vrm);
+  vrm.position.set(3.1, 0.14, -1.2 + r*0.48); vrm.userData.tagId = 'vrm';
+  const cap = cyl(0.14, 0.14, 0.28, 12, M.cap);
+  cap.position.set(3.8, 0.18, -1.2 + r*0.48); cap.userData.tagId = 'vrm';
+  pcbGroup.add(vrm, cap);
+}
+
+const pcieConnector = box(3.2, 0.04, 0.32, M.finger);
+pcieConnector.position.set(-2.5, -0.02, CARD_D/2 - 0.22);
+pcieConnector.userData.tagId = 'pcie';
+pcbGroup.add(pcieConnector);
+
+pcbGroup.position.copy(pcbGroup.userData.origin);
+root.add(pcbGroup);
+
+/* =========================================================================
+   5. LEVEL 4: SILICON DIE & 50MB L2 CACHE CROSSBAR
+   ========================================================================= */
+const packageGroup = new THREE.Group();
+packageGroup.userData = { id:'package', range:[0.36, 0.54], origin:new THREE.Vector3(-0.1, 0.10, 0), offset:new THREE.Vector3(0, 1.1, 0) };
+
+const substrate = box(2.6, 0.14, 2.6, M.substrate); substrate.castShadow = true;
+substrate.userData.tagId = 'die';
+const dieMesh = box(1.8, 0.12, 1.8, M.die);
+dieMesh.position.y = 0.13; dieMesh.castShadow = true; dieMesh.userData.tagId = 'die';
+
+const l2slab = box(1.6, 0.14, 0.45, M.l2);
+l2slab.position.set(0, 0.24, 0); l2slab.castShadow = true; l2slab.userData.tagId = 'l2';
+
+packageGroup.add(substrate, dieMesh, l2slab);
+packageGroup.position.copy(packageGroup.userData.origin);
+root.add(packageGroup);
+
+/* =========================================================================
+   6. LEVEL 5: GPC CLUSTERS
+   ========================================================================= */
+const gpcGroup = new THREE.Group();
+gpcGroup.userData = { id:'gpc', range:[0.48, 0.68], origin:new THREE.Vector3(-0.1, 0.65, 0), offset:new THREE.Vector3(0, 1.0, 0) };
+const gpcBlocks = [];
+[[-0.65,-0.65],[0.65,-0.65],[-0.65,0.65],[0.65,0.65]].forEach(([x,z], idx)=>{
+  const gp = box(1.05, 0.35, 1.05, M.gpc);
+  gp.position.set(x, 0, z); gp.castShadow = true;
+  gp.userData.homeXZ = [x, z]; gp.userData.tagId = 'gpc' + idx;
+  gpcGroup.add(gp); gpcBlocks.push(gp);
+});
+gpcGroup.position.copy(gpcGroup.userData.origin);
+root.add(gpcGroup);
+
+/* =========================================================================
+   7. LEVEL 6 & 7: STREAMING MULTIPROCESSOR (SM) WITH 4 DISTINCT SUB-CORES
+   ========================================================================= */
+const smGroup = new THREE.Group();
+smGroup.userData = { id:'sm', range:[0.64, 0.95], origin:new THREE.Vector3(-2.2, 2.5, -1.8), offset:new THREE.Vector3(-1.4, 1.2, -1.2) };
+
+const smChassisFrame = box(4.6, 0.22, 4.0, M.smFrame);
+smChassisFrame.position.y = -0.16; smChassisFrame.castShadow = true; smChassisFrame.userData.tagId = 'sm';
+smGroup.add(smChassisFrame);
+
+const l1Cache = box(4.3, 0.14, 0.38, M.l1cache);
+l1Cache.position.set(0, 0.05, -1.65); l1Cache.userData.tagId = 'l1';
+smGroup.add(l1Cache);
+
+const sharedMem = box(4.3, 0.16, 0.48, M.sharedmem);
+sharedMem.position.set(0, 0.05, 1.6); sharedMem.userData.tagId = 'shared';
+smGroup.add(sharedMem);
+
+const dividerX = box(0.12, 0.18, 2.6, M.subcoreDivider);
+dividerX.position.set(0, 0.08, -0.05);
+const dividerZ = box(4.3, 0.18, 0.12, M.subcoreDivider);
+dividerZ.position.set(0, 0.08, -0.05);
+smGroup.add(dividerX, dividerZ);
+
+const subcorePositions = [
+  [-1.15, -0.68], [1.15, -0.68],
+  [-1.15,  0.58], [1.15,  0.58]
+];
+
+const subcoreMeshes = [];
+const cudaCores = [];
+const tensorCores = [];
+const regFiles = [];
+const warpSchedulers = [];
+
+subcorePositions.forEach(([scX, scZ], scIdx)=>{
+  const scPlate = box(2.0, 0.10, 0.98, M['subcore'+scIdx]);
+  scPlate.position.set(scX, 0.01, scZ);
+  scPlate.userData.tagId = 'subcore' + scIdx;
+  smGroup.add(scPlate);
+  subcoreMeshes.push(scPlate);
+
+  const sched = box(0.36, 0.16, 0.76, M.warpSched);
+  sched.position.set(scX - 0.74, 0.10, scZ);
+  sched.userData.tagId = 'sched' + scIdx;
+  smGroup.add(sched);
+  warpSchedulers.push(sched);
+
+  const reg = box(0.42, 0.18, 0.76, M.regfile);
+  reg.position.set(scX - 0.25, 0.11, scZ);
+  reg.userData.tagId = 'reg' + scIdx;
+  smGroup.add(reg);
+  regFiles.push(reg);
+
+  for(let cr=0; cr<2; cr++){
+    for(let cc=0; cc<4; cc++){
+      const c = box(0.09, 0.14, 0.13, M.cuda);
+      c.position.set(scX + 0.10 + cc*0.12, 0.09, scZ - 0.22 + cr*0.44);
+      c.userData.tagId = 'cuda' + scIdx;
+      smGroup.add(c);
+      if(scIdx === 0) cudaCores.push(c);
+    }
+  }
+
+  const tc = box(0.32, 0.22, 0.76, M.tensor);
+  tc.position.set(scX + 0.74, 0.12, scZ);
+  tc.userData.tagId = 'tensor' + scIdx;
+  smGroup.add(tc);
+  tensorCores.push(tc);
+});
+
+smGroup.position.copy(smGroup.userData.origin);
+smGroup.scale.set(0.001, 0.001, 0.001);
+root.add(smGroup);
+
+/* =========================================================================
+   GLOWING SELECTION HIGHLIGHT RIG
+   ========================================================================= */
+const highlightGeo = new THREE.BoxGeometry(1, 1, 1);
+const highlightMat = new THREE.MeshBasicMaterial({
+  color: 0x10b981,
+  wireframe: true,
+  transparent: true,
+  opacity: 0.85
+});
+const highlightMesh = new THREE.Mesh(highlightGeo, highlightMat);
+highlightMesh.visible = false;
+scene.add(highlightMesh);
+
+const glowOutlineMat = new THREE.MeshBasicMaterial({
+  color: 0x10b981,
+  transparent: true,
+  opacity: 0.25,
+  side: THREE.BackSide
+});
+const glowMesh = new THREE.Mesh(highlightGeo, glowOutlineMat);
+glowMesh.visible = false;
+scene.add(glowMesh);
+
+function setHighlightOnMesh(mesh, colorHex=0x10b981){
+  if(!mesh){
+    highlightMesh.visible = false;
+    glowMesh.visible = false;
+    return;
+  }
+  const box3 = new THREE.Box3().setFromObject(mesh);
+  const size = new THREE.Vector3();
+  const center = new THREE.Vector3();
+  box3.getSize(size);
+  box3.getCenter(center);
+
+  size.addScalar(0.08);
+  highlightMesh.scale.copy(size);
+  highlightMesh.position.copy(center);
+  highlightMesh.material.color.setHex(colorHex);
+  highlightMesh.visible = true;
+
+  glowMesh.scale.copy(size).multiplyScalar(1.05);
+  glowMesh.position.copy(center);
+  glowMesh.material.color.setHex(colorHex);
+  glowMesh.visible = true;
+}
+
+/* =========================================================================
+   COMPONENT DATABASE & DETAILS
+   ========================================================================= */
+const componentData = {
+  shroud: {
+    title: 'Dual-Axial Cooling Shroud', badge: 'Chassis', type: 'default',
+    stage: 0, anchor: shroudBody,
+    desc: 'Aerodynamic magnesium-alloy outer enclosure with flow-through ventilation channels that pulls cooling air directly across internal vapor chamber fins.',
+    specs: '<b>Material:</b> Die-cast Aluminum | <b>Acoustics:</b> < 30 dBA | <b>Thermal Capacity:</b> 700W TDP'
+  },
+  fans: {
+    title: 'Dual-Axial Cooling Fans', badge: 'Thermal', type: 'default',
+    stage: 0, anchor: fanRotators[0],
+    desc: 'Counter-rotating high-static pressure fans with 9 aerodynamic airfoil blades and fluid dynamic bearings that cycle air over copper heatpipes.',
+    specs: '<b>Blade Count:</b> 9 Airfoils | <b>Bearing:</b> Fluid Dynamic | <b>RPM:</b> 800–2400'
+  },
+  fins: {
+    title: 'Vapor Chamber & 38 Aluminum Fins', badge: 'Thermal', type: 'default',
+    stage: 1, anchor: heatsinkGroup.children[0],
+    desc: 'Dense micro-fin heatsink stack that spreads heat from the monolithic silicon die across a wide dissipation area.',
+    specs: '<b>Fins:</b> 38x Stamped Aluminum | <b>Baseplate:</b> Nickel-plated Vapor Chamber'
+  },
+  pipes: {
+    title: 'Sintered Copper Heatpipes', badge: 'Thermal', type: 'default',
+    stage: 1, anchor: heatsinkGroup.children[finCount],
+    desc: '4 sintered composite copper heat pipes carrying phase-change coolant to rapidly distribute thermal energy away from the silicon hotspot.',
+    specs: '<b>Count:</b> 4x Heatpipes | <b>Diameter:</b> 8mm Sintered Copper'
+  },
+  backplate: {
+    title: 'Structural Aluminum Backplate', badge: 'Chassis', type: 'default',
+    stage: 1, anchor: backplate,
+    desc: 'Rigid anodized aluminum backplate providing mechanical anti-sag support and passive rear memory cooling.',
+    specs: '<b>Material:</b> Anodized Aluminum | <b>Function:</b> Structural Rigidity & Memory Cooling'
+  },
+  pcb: {
+    title: '16-Layer High-Density PCB', badge: 'Board', type: 'default',
+    stage: 2, anchor: pcbBoard,
+    desc: 'Ultra-low loss 16-layer printed circuit board routing thousands of high-speed differential pairs between GPU ASIC and VRAM modules.',
+    specs: '<b>Layers:</b> 16 High-Density | <b>Traces:</b> High-Frequency PCIe Gen5 & GDDR6X'
+  },
+  vram: {
+    title: 'VRAM / HBM3 Memory (8 Modules)', badge: 'Memory', type: 'mem',
+    stage: 2, anchor: vramChips[0],
+    desc: 'High-Bandwidth Global VRAM. Holds weights, activations, and KV Cache. Streams data to on-die caches at ~3.35 TB/s (400-800 cycles away).',
+    specs: '<b>Bandwidth:</b> 3.35 TB/s | <b>Capacity:</b> 80-144 GB | <b>Latency:</b> 400-800 cyc'
+  },
+  vrm: {
+    title: '24-Phase Digital VRM Power', badge: 'Power', type: 'default',
+    stage: 2, anchor: pcbGroup.children[10],
+    desc: 'Clean, instantaneous current delivery delivering up to 1000A at sub-1.0V to sustain peak compute frequencies.',
+    specs: '<b>Phases:</b> 24-Phase Monolithic | <b>Current:</b> Up to 1000A'
+  },
+  die: {
+    title: 'Monolithic TSMC 4nm Silicon Die', badge: 'Silicon', type: 'default',
+    stage: 3, anchor: dieMesh,
+    desc: 'Massive monolithic silicon die housing 80+ billion transistors, 6-8 GPCs, and the unified L2 Cache Crossbar.',
+    specs: '<b>Die Area:</b> 814 mm² | <b>Process:</b> TSMC 4N | <b>Transistors:</b> 80+ Billion'
+  },
+  l2: {
+    title: '50MB Unified L2 Cache Crossbar', badge: 'Memory', type: 'mem',
+    stage: 3, anchor: l2slab,
+    desc: 'Die-level shared SRAM cache that arbitrates all memory traffic between GPCs and VRAM, avoiding slow off-chip memory trips.',
+    specs: '<b>Capacity:</b> 50 MB | <b>Bandwidth:</b> ~6.0 TB/s | <b>Latency:</b> 150-200 cyc'
+  },
+  gpc0: {
+    title: 'GPC Cluster 0 (GPU Processing Cluster)', badge: 'Compute', type: 'default',
+    stage: 4, anchor: gpcBlocks[0],
+    desc: 'Top-level raster and compute cluster. Distributes coarse grids of thread blocks to its underlying child SMs.',
+    specs: '<b>Clusters:</b> 4-8 GPCs per GPU | <b>Function:</b> Thread Block Scheduling'
+  },
+  gpc1: {
+    title: 'GPC Cluster 1', badge: 'Compute', type: 'default',
+    stage: 4, anchor: gpcBlocks[1],
+    desc: 'Independent GPU Processing Cluster executing parallel thread blocks concurrently.',
+    specs: '<b>Function:</b> Grid Partitioning'
+  },
+  sm: {
+    title: 'Streaming Multiprocessor (SM)', badge: 'Compute', type: 'default',
+    stage: 5, anchor: smChassisFrame,
+    desc: 'The fundamental GPU compute engine. A CUDA thread block executes entirely within 1 SM, sharing fast SRAM and warp schedulers.',
+    specs: '<b>Max Threads:</b> 2048 | <b>Sub-Cores:</b> 4 | <b>Shared Memory:</b> 228 KB SRAM'
+  },
+  l1: {
+    title: 'L1 Instruction Cache', badge: 'Cache', type: 'default',
+    stage: 5, anchor: l1Cache,
+    desc: 'Delivers decoded SASS machine instructions to all 4 sub-core Warp Schedulers simultaneously with 0 pipeline bubbles.',
+    specs: '<b>Scope:</b> Shared across 4 Sub-Cores | <b>Latency:</b> 1-2 cyc'
+  },
+  shared: {
+    title: 'Shared Memory / L1 SRAM (32 Banks)', badge: 'Memory', type: 'mem',
+    stage: 5, anchor: sharedMem,
+    desc: 'High-speed scratchpad SRAM with 32 independent banks. Data tiles loaded here once are reused hundreds of times by warp threads.',
+    specs: '<b>Capacity:</b> 228 KB/SM | <b>Bandwidth:</b> ~18 TB/s | <b>Latency:</b> 15-30 cyc'
+  },
+  subcore0: {
+    title: 'Sub-Core 0 (Warp Processing Block)', badge: 'Sub-Core', type: 'default',
+    stage: 6, anchor: subcoreMeshes[0],
+    desc: 'Independent processing block containing its own Warp Scheduler, 64KB Register File, 16 CUDA Cores, and 4th-Gen Tensor Core.',
+    specs: '<b>Partition:</b> 1 of 4 Sub-Cores | <b>Warp Capacity:</b> 16 Warps'
+  },
+  subcore1: {
+    title: 'Sub-Core 1 (Warp Processing Block)', badge: 'Sub-Core', type: 'default',
+    stage: 6, anchor: subcoreMeshes[1],
+    desc: 'Independent processing block executing warps concurrently with 0-cycle latency switching.',
+    specs: '<b>Partition:</b> 1 of 4 Sub-Cores | <b>Warp Capacity:</b> 16 Warps'
+  },
+  sched0: {
+    title: 'Warp Scheduler & Dispatch Unit', badge: 'Scheduler', type: 'sched',
+    stage: 6, anchor: warpSchedulers[0],
+    desc: 'Dual-issue scheduler. Switches between ready warps in 0 clock cycles, completely hiding 400-cycle VRAM latency.',
+    specs: '<b>Switch Overhead:</b> 0 cycles | <b>Issue Rate:</b> 2 inst/cyc'
+  },
+  reg0: {
+    title: '64KB Register File SRAM Slice', badge: 'Registers', type: 'sched',
+    stage: 6, anchor: regFiles[0],
+    desc: 'The fastest memory on silicon, directly wired to ALU inputs. Private to each thread (0-1 cycle latency).',
+    specs: '<b>Size:</b> 64 KB per Sub-Core (256 KB/SM) | <b>Bandwidth:</b> ~35 TB/s | <b>Latency:</b> 0-1 cyc'
+  },
+  cuda0: {
+    title: 'FP32 / INT32 CUDA Cores (ALUs)', badge: 'Compute', type: 'default',
+    stage: 6, anchor: cudaCores[0],
+    desc: 'Scalar ALU computing 1 Fused Multiply-Add (d = a*b + c) per cycle per thread. Best for elementwise arithmetic (ReLU, Add, Silu).',
+    specs: '<b>Granularity:</b> Scalar (1x1) | <b>Throughput:</b> 2 FLOPs/cycle/core'
+  },
+  tensor0: {
+    title: '4th-Gen Tensor Core (Systolic Array)', badge: 'Matrix MMA', type: 'tensor',
+    stage: 6, anchor: tensorCores[0],
+    desc: 'Specialized systolic matrix array. All 32 warp threads feed 16x16 matrix fragments, computing hundreds of FLOPs in 1 step.',
+    specs: '<b>Granularity:</b> 16x16 Matrix Tile | <b>Throughput:</b> Hundreds of FLOPs/cycle'
+  }
+};
+
+/* =========================================================================
+   STAGE DEFINITIONS & DISSECTION SLIDER
+   ========================================================================= */
+const stageDefs = [
+  {id:'shroud', name:'Closed Card', at:0.00, title:'Level 0: Closed Card Enclosure'},
+  {id:'heatsink', name:'Cooling System', at:0.18, title:'Level 1: Vapor Chamber & Heatsink'},
+  {id:'pcb', name:'PCB & VRAM', at:0.35, title:'Level 2: PCB Board & VRAM Modules'},
+  {id:'package', name:'Die & L2 Cache', at:0.52, title:'Level 3: Silicon Die & L2 Cache'},
+  {id:'gpc', name:'GPC Clusters', at:0.68, title:'Level 4: GPC Island Array'},
+  {id:'sm', name:'SM Chassis', at:0.86, title:'Level 5: Streaming Multiprocessor (SM)'},
+  {id:'cores', name:'Sub-Cores & Cores', at:1.00, title:'Level 6: 4 Sub-Cores & Execution Units'},
+];
+
+let progress = 0.0, targetProgress = 0.0;
+let activeStage = stageDefs[0];
+let selectedCompId = null;
+
+const stagenameEl = document.getElementById('stagename');
+const panelStageTitleEl = document.getElementById('panel-stage-title');
+const compListEl = document.getElementById('comp-list');
+const tagContainer = document.getElementById('tag-container');
+const tagMap = {};
+
+// Create 3D Tags
+Object.keys(componentData).forEach(id=>{
+  const comp = componentData[id];
+  const tagEl = document.createElement('div');
+  tagEl.className = `tag3d ${comp.type}`;
+  tagEl.dataset.id = id;
+  tagEl.innerHTML = `
+    <div class="tag-inner">
+      <span class="tag-dot"></span>
+      <span>${comp.title.split('(')[0]}</span>
+    </div>
+  `;
+  tagEl.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    stopAutoTour();
+    selectComponent(id);
+  });
+  tagContainer.appendChild(tagEl);
+  tagMap[id] = tagEl;
+});
+
+function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+function ease(t){ return t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2; }
+function reveal(group){ const [s,e]=group.userData.range; return clamp((progress-s)/(e-s), 0, 1); }
+function smReveal(){ return reveal(smGroup); }
+
+const explodeLayers = [shroudGroup, heatsinkGroup, backplateGroup, pcbGroup, packageGroup, gpcGroup];
+const fadeLayers = [
+  {group:shroudGroup, mats:[M.shroud, M.shroudBevel, M.fan, M.fanHub, M.bracket]},
+  {group:heatsinkGroup, mats:[M.heatsinkFin, M.copperPipe]},
+  {group:backplateGroup, mats:[M.backplate]},
+  {group:pcbGroup, mats:[M.pcb, M.vram, M.vrm, M.cap, M.finger]},
+  {group:packageGroup, mats:[M.substrate, M.die, M.l2]},
+  {group:gpcGroup, mats:[M.gpc]},
+];
+
+function updateExplode(){
+  explodeLayers.forEach(g=>{
+    const t = ease(reveal(g));
+    g.position.copy(g.userData.origin).addScaledVector(g.userData.offset, t);
+  });
+
+  const gpcSpread = ease(clamp((progress-0.54)/0.18, 0, 1));
+  gpcBlocks.forEach(b=>{
+    const [hx, hz] = b.userData.homeXZ;
+    b.position.x = hx + hx*gpcSpread*1.2;
+    b.position.z = hz + hz*gpcSpread*1.2;
+  });
+
+  const st = ease(smReveal());
+  const sc = 0.001 + st*0.999;
+  smGroup.scale.set(sc, sc, sc);
+  smGroup.position.copy(smGroup.userData.origin).addScaledVector(smGroup.userData.offset, st);
+
+  fadeLayers.forEach(fl=>{
+    const [,e2] = fl.group.userData.range;
+    const f = clamp((progress - (e2 + 0.12)) / 0.30, 0, 1);
+    const op = 1.0 - f*0.82;
+    fl.mats.forEach(m => { m.opacity = op; });
+  });
+
+  let current = stageDefs[0];
+  stageDefs.forEach(sd => { if(progress >= sd.at - 0.06) current = sd; });
+  
+  if(current !== activeStage){
+    activeStage = current;
+    stagenameEl.textContent = current.name;
+    panelStageTitleEl.textContent = current.title;
+    renderLeftComponentList();
+  }
+
+  document.querySelectorAll('.stop').forEach(el => {
+    el.classList.toggle('active', el.dataset.id === current.id);
+  });
+
+  document.getElementById('trackfill').style.height = (progress * 100) + '%';
+  document.getElementById('handle').style.top = (progress * 100) + '%';
+}
+
+/* =========================================================================
+   LAYER-SPECIFIC LEFT COMPONENT DIRECTORY
+   ========================================================================= */
+const detailCard = document.getElementById('detail-card');
+const detailBadge = document.getElementById('detail-badge');
+const detailTitle = document.getElementById('detail-title');
+const detailDesc = document.getElementById('detail-desc');
+const detailSpecs = document.getElementById('detail-specs');
+const detailCloseBtn = document.getElementById('detail-close-btn');
+
+detailCloseBtn.addEventListener('click', ()=>{
+  detailCard.classList.remove('show');
+  selectedCompId = null;
+  setHighlightOnMesh(null);
+  customCameraTarget = null;
+  document.querySelectorAll('.comp-item').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tag3d').forEach(el => el.classList.remove('active'));
+});
+
+function renderLeftComponentList(){
+  compListEl.innerHTML = '';
+  const currentStageIndex = stageDefs.indexOf(activeStage);
+
+  Object.keys(componentData).forEach(id=>{
+    const comp = componentData[id];
+    if(comp.stage === currentStageIndex){
+      const row = document.createElement('div');
+      row.className = `comp-item ${comp.type}` + (selectedCompId === id ? ' active' : '');
+      row.dataset.id = id;
+      row.innerHTML = `
+        <div class="comp-item-left">
+          <span class="comp-dot"></span>
+          <span class="comp-name">${comp.title.split('(')[0]}</span>
+        </div>
+        <span class="comp-badge">${comp.badge}</span>
+      `;
+      row.addEventListener('click', ()=>{
+        stopAutoTour();
+        selectComponent(id);
+      });
+      compListEl.appendChild(row);
+    }
+  });
+}
+
+function selectComponent(id){
+  selectedCompId = id;
+  const comp = componentData[id];
+  if(!comp) return;
+
+  document.querySelectorAll('.comp-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.id === id);
+  });
+
+  document.querySelectorAll('.tag3d').forEach(el => {
+    el.classList.toggle('active', el.dataset.id === id);
+  });
+
+  detailTitle.textContent = comp.title;
+  detailDesc.textContent = comp.desc;
+  detailSpecs.innerHTML = comp.specs || '';
+  detailBadge.textContent = comp.badge;
+  
+  let colorHex = 0x10b981;
+  if(comp.type === 'tensor'){
+    detailBadge.style.background = 'var(--tensor-soft)'; detailBadge.style.color = 'var(--tensor)';
+    colorHex = 0xf59e0b;
+  } else if(comp.type === 'mem'){
+    detailBadge.style.background = 'var(--mem-soft)'; detailBadge.style.color = 'var(--mem)';
+    colorHex = 0x0284c7;
+  } else if(comp.type === 'sched'){
+    detailBadge.style.background = 'var(--sched-soft)'; detailBadge.style.color = 'var(--sched)';
+    colorHex = 0x8b5cf6;
+  } else {
+    detailBadge.style.background = 'var(--accent-soft)'; detailBadge.style.color = 'var(--accent)';
+  }
+  detailCard.classList.add('show');
+
+  if(comp.anchor){
+    setHighlightOnMesh(comp.anchor, colorHex);
+    const v = new THREE.Vector3();
+    comp.anchor.getWorldPosition(v);
+    focusCameraOn(v);
+  }
+}
+
+/* =========================================================================
+   3D FLOATING NAME TAGS POSITION UPDATE
+   ========================================================================= */
+function update3DTags(){
+  const currentStageIndex = stageDefs.indexOf(activeStage);
+  const pos = new THREE.Vector3();
+
+  Object.keys(componentData).forEach(id=>{
+    const comp = componentData[id];
+    const el = tagMap[id];
+    if(!el) return;
+
+    if(comp.stage !== currentStageIndex || !comp.anchor){
+      el.style.opacity = 0;
+      el.style.pointerEvents = 'none';
+      return;
+    }
+
+    comp.anchor.getWorldPosition(pos);
+    pos.project(camera);
+
+    if(pos.z > 1.0){
+      el.style.opacity = 0;
+      el.style.pointerEvents = 'none';
+      return;
+    }
+
+    const x = (pos.x * 0.5 + 0.5) * window.innerWidth;
+    const y = (-pos.y * 0.5 + 0.5) * window.innerHeight;
+
+    if(x < -40 || x > window.innerWidth + 40 || y < -40 || y > window.innerHeight + 40){
+      el.style.opacity = 0;
+      el.style.pointerEvents = 'none';
+      return;
+    }
+
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    el.style.opacity = 1;
+    el.style.pointerEvents = 'auto';
+  });
+}
+
+/* =========================================================================
+   FREE ORBIT CAMERA & SMOOTH FOCUS (Initial comfortable zoom-out)
+   ========================================================================= */
+let theta = 0.65, phi = 1.15;
+let userZoom = 1.35; // Comfortable initial pulled-back overview!
+const target = new THREE.Vector3(0, 0.1, 0);
+let customCameraPos = null, customCameraTarget = null;
+
+function focusCameraOn(pos){
+  customCameraTarget = pos.clone();
+  customCameraPos = pos.clone().add(new THREE.Vector3(1.6, 2.2, 3.0));
+}
+
+function updateCamera(){
+  if(customCameraTarget){
+    camera.position.lerp(customCameraPos, 0.08);
+    target.lerp(customCameraTarget, 0.08);
+    camera.lookAt(target);
+    return;
+  }
+
+  const focusT = ease(clamp((progress - 0.52)/0.40, 0, 1));
+  const lowTarget = new THREE.Vector3(0, 0.15, 0);
+  const highTarget = smGroup.position.clone();
+  target.copy(lowTarget).lerp(highTarget, focusT);
+
+  // Comfortable base radius for wide overview
+  const baseRadius = 11.2 + (4.2 - 11.2)*ease(progress);
+  const r = clamp(baseRadius * userZoom, 2.0, 28);
+  const off = new THREE.Vector3(
+    r * Math.sin(phi) * Math.sin(theta),
+    r * Math.cos(phi),
+    r * Math.sin(phi) * Math.cos(theta)
+  );
+  camera.position.copy(target).add(off);
+  camera.lookAt(target);
+}
+
+const canvas = renderer.domElement;
+let dragging = false, dragStartX=0, dragStartY=0, lastX=0, lastY=0;
+
+canvas.addEventListener('pointerdown', e=>{
+  dragging = false; dragStartX = lastX = e.clientX; dragStartY = lastY = e.clientY;
+  canvas.setPointerCapture(e.pointerId);
+});
+canvas.addEventListener('pointermove', e=>{
+  if(e.buttons !== 1) return;
+  const dx = e.clientX - lastX, dy = e.clientY - lastY;
+  if(Math.abs(e.clientX - dragStartX) > 4 || Math.abs(e.clientY - dragStartY) > 4) dragging = true;
+  if(dragging){
+    stopAutoTour();
+    customCameraTarget = null;
+    theta -= dx * 0.006;
+    phi = clamp(phi - dy * 0.005, 0.25, 2.9);
+    lastX = e.clientX; lastY = e.clientY;
+  }
+});
+canvas.addEventListener('pointerup', e=>{ if(!dragging) handleClick(e); });
+canvas.addEventListener('wheel', e=>{
+  e.preventDefault();
+  stopAutoTour();
+  customCameraTarget = null;
+  userZoom = clamp(userZoom * (1 + e.deltaY * 0.001), 0.5, 2.8);
+}, {passive:false});
+
+/* =========================================================================
+   MAGNETIC CHECKPOINT DISSECTION TRACK
+   ========================================================================= */
+const track = document.getElementById('track');
+let sliderDragging = false;
+
+function setProgressFromPointer(clientY){
+  stopAutoTour();
+  customCameraTarget = null;
+  const rect = track.getBoundingClientRect();
+  let t = clamp((clientY - rect.top) / rect.height, 0, 1);
+  for(let sd of stageDefs){
+    if(Math.abs(t - sd.at) < 0.035){ t = sd.at; break; }
+  }
+  targetProgress = t;
+}
+
+track.addEventListener('pointerdown', e=>{
+  sliderDragging = true;
+  setProgressFromPointer(e.clientY);
+  track.setPointerCapture(e.pointerId);
+});
+track.addEventListener('pointermove', e=>{
+  if(sliderDragging) setProgressFromPointer(e.clientY);
+});
+track.addEventListener('pointerup', e=>{
+  sliderDragging = false;
+  let closest = stageDefs[0];
+  let minDiff = 999;
+  stageDefs.forEach(sd=>{
+    const d = Math.abs(targetProgress - sd.at);
+    if(d < minDiff){ minDiff = d; closest = sd; }
+  });
+  if(minDiff < 0.08){ targetProgress = closest.at; }
+});
+
+const dissectwrap = document.getElementById('dissectwrap');
+stageDefs.forEach(sd=>{
+  const row = document.createElement('div');
+  row.className = 'stop'; row.dataset.id = sd.id;
+  row.style.top = (sd.at * 100) + '%';
+  row.innerHTML = `<span class="node-btn"></span><span class="lbl">${sd.name}</span>`;
+  row.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    stopAutoTour();
+    customCameraTarget = null;
+    targetProgress = sd.at;
+  });
+  dissectwrap.appendChild(row);
+});
+
+/* =========================================================================
+   3D MESH CLICK RAYCASTING
+   ========================================================================= */
+const clickableMeshes = [
+  shroudBody, pcbBoard, dieMesh, l2slab, smChassisFrame, l1Cache, sharedMem,
+  ...vramChips, ...gpcBlocks, ...subcoreMeshes, ...warpSchedulers, ...regFiles, ...cudaCores, ...tensorCores
+];
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+
+function handleClick(e){
+  pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+  pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const hits = raycaster.intersectObjects(clickableMeshes, false);
+  if(!hits.length) return;
+  const tagId = hits[0].object.userData.tagId;
+  if(tagId && componentData[tagId]){
+    stopAutoTour();
+    selectComponent(tagId);
+  }
+}
+
+/* =========================================================================
+   RUN MODE: CINEMATIC AUTO TOUR (Layer Overview -> Slow Rotation -> Tour Components)
+   ========================================================================= */
+const autoTourBtn = document.getElementById('auto-tour-btn');
+let isAutoTouring = false, tourAbort = false, isTourLayerOverview = false;
+
+function tweenProgress(val, duration=1000){
+  return new Promise(res=>{
+    const start = targetProgress;
+    const diff = val - start;
+    const startTime = performance.now();
+    function step(now){
+      if(tourAbort) return res();
+      const t = Math.min(1, (now - startTime) / duration);
+      targetProgress = start + diff * ease(t);
+      updateExplode();
+      if(t < 1) requestAnimationFrame(step);
+      else res();
+    }
+    requestAnimationFrame(step);
+  });
+}
+
+function waitMs(ms){
+  return new Promise(res=>{
+    const start = performance.now();
+    function check(now){
+      if(tourAbort || now - start >= ms) res();
+      else requestAnimationFrame(check);
+    }
+    requestAnimationFrame(check);
+  });
+}
+
+async function startAutoTour(){
+  if(isAutoTouring) return;
+  isAutoTouring = true; tourAbort = false;
+  autoTourBtn.classList.add('active');
+  autoTourBtn.innerHTML = '<span class="icon">⏹</span> Stop Tour';
+
+  for(let stageIdx = 0; stageIdx < stageDefs.length; stageIdx++){
+    if(tourAbort) break;
+    const stage = stageDefs[stageIdx];
+    
+    // 1. Zoom off / Overview mode for the new layer
+    detailCard.classList.remove('show');
+    selectedCompId = null;
+    setHighlightOnMesh(null);
+    customCameraTarget = null; // Pull back to full layer overview
+    isTourLayerOverview = true;
+
+    // 2. Advance to next dissection stage smoothly
+    await tweenProgress(stage.at, 1200);
+    if(tourAbort) break;
+
+    // 3. Keep in zoom-off mode with slow cinematic rotation for 2.4s so user sees complete layer
+    await waitMs(2400);
+    isTourLayerOverview = false;
+    if(tourAbort) break;
+
+    // 4. Sequentially tour and zoom into each component in this stage
+    const comps = Object.keys(componentData).filter(id => componentData[id].stage === stageIdx);
+    for(let compId of comps){
+      if(tourAbort) break;
+      selectComponent(compId);
+      await waitMs(2800);
+    }
+  }
+
+  stopAutoTour();
+}
+
+function stopAutoTour(){
+  if(!isAutoTouring) return;
+  tourAbort = true;
+  isAutoTouring = false;
+  isTourLayerOverview = false;
+  autoTourBtn.classList.remove('active');
+  autoTourBtn.innerHTML = '<span class="icon">▶</span> Auto Tour';
+}
+
+autoTourBtn.addEventListener('click', ()=>{
+  if(isAutoTouring) stopAutoTour();
+  else startAutoTour();
+});
+
+/* =========================================================================
+   ANIMATION & RENDER LOOP (with Subtle Cinematic Rotation)
+   ========================================================================= */
+function animate(){
+  requestAnimationFrame(animate);
+  fanRotators.forEach(f => { f.rotation.y += 0.035; });
+
+  // Gentle turntable rotation during layer overview or idle overview
+  if((isTourLayerOverview || (!customCameraTarget && !dragging && progress < 0.1)) && !dragging){
+    theta += 0.003;
+  }
+
+  progress += (targetProgress - progress) * 0.10;
+  updateExplode();
+  updateCamera();
+  update3DTags();
+  renderer.render(scene, camera);
+}
+
+updateExplode();
+updateCamera();
+renderLeftComponentList();
+animate();
+
+window.addEventListener('resize', ()=>{
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>
