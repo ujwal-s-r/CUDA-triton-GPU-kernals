@@ -13,10 +13,11 @@
     --radius:12px; --shadow:0 4px 6px -1px rgba(0,0,0,0.05), 0 10px 25px -3px rgba(0,0,0,0.08);
   }
   *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;height:100%;background:var(--bg);overflow:hidden;
+  html,body{margin:0;padding:0;width:100vw;height:100vh;max-width:100vw;max-height:100vh;
+    background:var(--bg);overflow:hidden;position:fixed;inset:0;
     font-family:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",Helvetica,Arial,sans-serif;
     color:var(--ink);-webkit-font-smoothing:antialiased;}
-  #stage{position:fixed;inset:0;touch-action:none;}
+  #stage{position:fixed;inset:0;width:100vw;height:100vh;overflow:hidden;touch-action:none;}
   canvas{display:block;cursor:grab;}
   canvas:active{cursor:grabbing;}
 
@@ -117,8 +118,9 @@
   #detail-specs b{color:var(--ink);}
 
   /* Pinned 3D Floating Name Tags */
+  #tag-container{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;overflow:hidden;z-index:15;}
   .tag3d{position:absolute;z-index:15;pointer-events:auto;transform:translate(-50%,-50%);
-    transition:opacity .2s, transform .2s;cursor:pointer;user-select:none;}
+    transition:opacity .2s, transform .2s;cursor:pointer;user-select:none;display:none;}
   .tag3d .tag-inner{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.94);
     backdrop-filter:blur(6px);border:1px solid rgba(226,232,240,0.9);padding:3px 8px;border-radius:6px;
     box-shadow:0 2px 6px rgba(0,0,0,0.06);font-size:10.5px;font-weight:600;color:var(--ink);white-space:nowrap;
@@ -154,7 +156,7 @@
   #handle:hover{transform:translate(-50%,-50%) scale(1.15);}
   #handle:active{cursor:grabbing;transform:translate(-50%,-50%) scale(1.22);}
   
-  .stop{position:absolute;top:50%;display:flex;flex-direction:column;align-items:center;
+  .stop{position:absolute;top:50%;left:var(--pos, 0%);display:flex;flex-direction:column;align-items:center;
     transform:translate(-50%, -50%);cursor:pointer;user-select:none;z-index:3;}
   .stop .node-btn{width:13px;height:13px;border-radius:50%;background:#fff;border:2.5px solid #cbd5e1;
     box-shadow:0 1px 3px rgba(0,0,0,.1);transition:all .18s;}
@@ -172,6 +174,83 @@
     backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:100px;
     padding:6px 14px;box-shadow:var(--shadow);}
   #controlshint b{color:var(--ink);font-weight:600;}
+
+  /* Mobile Responsive Adaptations (Screen <= 768px) */
+  @media (max-width: 768px) {
+    #topbar{padding:10px 14px;gap:6px;}
+    .topbar-left{gap:8px;}
+    #wordmark{font-size:11px;}
+    #wordmark span{display:none;}
+    .tour-btn{font-size:10.5px;padding:5px 12px;}
+    .topbar-right{gap:6px;}
+    #social-pill{padding:4px 8px;}
+    .social-handle{display:none;}
+    #stagepill{display:none;}
+
+    /* Bottom Horizontal Scrollable Layer Component Drawer */
+    #left-panel{
+      left:0;right:0;bottom:0;top:auto;width:100%;
+      max-height:118px;border-radius:16px 16px 0 0;
+      border-bottom:none;border-left:none;border-right:none;
+      box-shadow:0 -4px 20px rgba(0,0,0,0.08);padding:0;z-index:30;
+    }
+    .panel-header{padding:6px 14px 4px;display:flex;align-items:center;justify-content:space-between;}
+    .panel-title{display:none;}
+    .panel-subtitle{font-size:11.5px;}
+    .panel-hint{font-size:9.5px;margin-top:0;}
+    #comp-list{
+      flex-direction:row;overflow-x:auto;overflow-y:hidden;
+      padding:6px 12px 10px;gap:8px;-webkit-overflow-scrolling:touch;
+    }
+    .comp-item{
+      flex:0 0 auto;min-width:145px;padding:6px 10px;border-radius:8px;
+    }
+    .comp-item:hover{transform:none;}
+    .comp-name{font-size:10.5px;max-width:115px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .comp-inspect-btn{display:none;}
+
+    /* Right Vertical Dissection Scroller */
+    #dissectwrap{
+      position:fixed;right:10px;left:auto;top:66px;bottom:126px;
+      transform:none;width:34px;padding:16px 6px;
+      flex-direction:column;justify-content:space-between;align-items:center;
+      border-radius:24px;gap:0;z-index:25;
+    }
+    .dissect-header{display:none;}
+    #track{width:4px;height:100%;margin-top:0;flex-direction:column;}
+    #trackline{top:0;bottom:0;left:50%;right:auto;width:4px;height:100%;transform:translateX(-50%);}
+    #trackfill{top:0;left:50%;width:4px;height:0;transform:translateX(-50%);}
+    #handle{
+      left:50% !important;top:0;transform:translate(-50%,-50%);
+      width:18px;height:18px;
+    }
+    .stop{
+      left:50% !important;top:var(--pos, 0%) !important;
+      transform:translate(-50%,-50%);
+    }
+    .stop .node-btn{width:12px;height:12px;}
+    .stop .lbl{
+      position:absolute;right:18px;top:50%;left:auto;
+      transform:translateY(-50%);font-size:9.5px;padding:3px 7px;
+      border-radius:6px;background:rgba(255,255,255,0.96);
+      box-shadow:0 2px 8px rgba(0,0,0,0.1);border:1px solid var(--line);
+      display:none;pointer-events:none;
+    }
+    .stop.active .lbl{display:block;color:var(--ink);font-weight:700;}
+
+    /* Detail Card Overlay on Mobile */
+    #detail-card{
+      left:12px;right:52px;bottom:126px;width:auto;max-width:none;
+      padding:10px 14px;z-index:35;
+    }
+    .detail-body{grid-template-columns:1fr;gap:6px;}
+    #detail-title{font-size:13px;}
+    #detail-desc{font-size:10.5px;line-height:1.4;}
+    #detail-specs{font-size:9.5px;padding:6px 8px;}
+
+    #controlshint{left:12px;bottom:126px;right:auto;font-size:9px;padding:4px 8px;gap:8px;}
+    .tag3d .tag-inner{font-size:9px;padding:2px 6px;}
+  }
 </style>
 </head>
 <body>
@@ -841,8 +920,18 @@ function updateExplode(){
     el.classList.toggle('active', el.dataset.id === current.id);
   });
 
-  document.getElementById('trackfill').style.width = (progress * 100) + '%';
-  document.getElementById('handle').style.left = (progress * 100) + '%';
+  const isMob = window.innerWidth <= 768;
+  if(isMob){
+    document.getElementById('trackfill').style.height = (progress * 100) + '%';
+    document.getElementById('trackfill').style.width = '4px';
+    document.getElementById('handle').style.top = (progress * 100) + '%';
+    document.getElementById('handle').style.left = '50%';
+  } else {
+    document.getElementById('trackfill').style.width = (progress * 100) + '%';
+    document.getElementById('trackfill').style.height = '4px';
+    document.getElementById('handle').style.left = (progress * 100) + '%';
+    document.getElementById('handle').style.top = '50%';
+  }
 }
 
 /* =========================================================================
@@ -947,6 +1036,7 @@ function update3DTags(){
     if(!el) return;
 
     if(comp.stage !== currentStageIndex || !comp.anchor){
+      el.style.display = 'none';
       el.style.opacity = 0;
       el.style.pointerEvents = 'none';
       return;
@@ -955,7 +1045,8 @@ function update3DTags(){
     comp.anchor.getWorldPosition(pos);
     pos.project(camera);
 
-    if(pos.z > 1.0){
+    if(pos.z > 1.0 || pos.z < -1.0){
+      el.style.display = 'none';
       el.style.opacity = 0;
       el.style.pointerEvents = 'none';
       return;
@@ -964,14 +1055,16 @@ function update3DTags(){
     const x = (pos.x * 0.5 + 0.5) * window.innerWidth;
     const y = (-pos.y * 0.5 + 0.5) * window.innerHeight;
 
-    if(x < -40 || x > window.innerWidth + 40 || y < -40 || y > window.innerHeight + 40){
+    if(x < 20 || x > window.innerWidth - 20 || y < 40 || y > window.innerHeight - 40){
+      el.style.display = 'none';
       el.style.opacity = 0;
       el.style.pointerEvents = 'none';
       return;
     }
 
-    el.style.left = x + 'px';
-    el.style.top = y + 'px';
+    el.style.left = Math.round(x) + 'px';
+    el.style.top = Math.round(y) + 'px';
+    el.style.display = 'block';
     el.style.opacity = 1;
     el.style.pointerEvents = 'auto';
   });
@@ -986,10 +1079,17 @@ const target = new THREE.Vector3(0, 0.2, 0);
 let customCameraPos = null, customCameraTarget = null;
 
 function applyCameraViewportOffset(){
-  // Shift rendering offset so 3D model is positioned nicely to the right and above bottom slider
-  const offsetX = window.innerWidth > 900 ? -120 : 0;
-  const offsetY = 45;
-  camera.setViewOffset(window.innerWidth, window.innerHeight, offsetX, offsetY, window.innerWidth, window.innerHeight);
+  // Shift rendering offset so 3D model is positioned nicely to the right and above bottom slider on desktop,
+  // or centered in the top majority area on mobile
+  if(window.innerWidth > 768){
+    const offsetX = window.innerWidth > 900 ? -120 : 0;
+    const offsetY = 45;
+    camera.setViewOffset(window.innerWidth, window.innerHeight, offsetX, offsetY, window.innerWidth, window.innerHeight);
+  } else {
+    // On mobile, lift model slightly so 3D visual occupies upper screen freely above bottom component drawer
+    const offsetY = -35;
+    camera.setViewOffset(window.innerWidth, window.innerHeight, 0, offsetY, window.innerWidth, window.innerHeight);
+  }
 }
 applyCameraViewportOffset();
 
@@ -1025,6 +1125,8 @@ function updateCamera(){
 
 const canvas = renderer.domElement;
 let dragging = false, dragStartX=0, dragStartY=0, lastX=0, lastY=0;
+let touchStartDist = 0;
+let initialZoom = userZoom;
 
 canvas.addEventListener('pointerdown', e=>{
   dragging = false; dragStartX = lastX = e.clientX; dragStartY = lastY = e.clientY;
@@ -1050,17 +1152,45 @@ canvas.addEventListener('wheel', e=>{
   userZoom = clamp(userZoom * (1 + e.deltaY * 0.001), 0.5, 2.8);
 }, {passive:false});
 
+// Touch Pinch-to-Zoom on Mobile
+canvas.addEventListener('touchstart', e => {
+  if(e.touches.length === 2){
+    touchStartDist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    initialZoom = userZoom;
+  }
+}, {passive: true});
+
+canvas.addEventListener('touchmove', e => {
+  if(e.touches.length === 2 && touchStartDist > 0){
+    const dist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    const scale = touchStartDist / (dist || 1);
+    userZoom = clamp(initialZoom * scale, 0.5, 2.8);
+  }
+}, {passive: true});
+
 /* =========================================================================
-   MAGNETIC CHECKPOINT DISSECTION TRACK (HORIZONTAL)
+   MAGNETIC CHECKPOINT DISSECTION TRACK (HORIZONTAL PC / VERTICAL MOBILE)
    ========================================================================= */
 const track = document.getElementById('track');
 let sliderDragging = false;
 
-function setProgressFromPointer(clientX){
+function setProgressFromPointer(e){
   stopAutoTour();
   customCameraTarget = null;
   const rect = track.getBoundingClientRect();
-  let t = clamp((clientX - rect.left) / rect.width, 0, 1);
+  const isMob = window.innerWidth <= 768;
+  let t;
+  if(isMob){
+    t = clamp((e.clientY - rect.top) / rect.height, 0, 1);
+  } else {
+    t = clamp((e.clientX - rect.left) / rect.width, 0, 1);
+  }
   for(let sd of stageDefs){
     if(Math.abs(t - sd.at) < 0.04){ t = sd.at; break; }
   }
@@ -1069,11 +1199,11 @@ function setProgressFromPointer(clientX){
 
 track.addEventListener('pointerdown', e=>{
   sliderDragging = true;
-  setProgressFromPointer(e.clientX);
+  setProgressFromPointer(e);
   track.setPointerCapture(e.pointerId);
 });
 track.addEventListener('pointermove', e=>{
-  if(sliderDragging) setProgressFromPointer(e.clientX);
+  if(sliderDragging) setProgressFromPointer(e);
 });
 track.addEventListener('pointerup', e=>{
   sliderDragging = false;
@@ -1089,6 +1219,7 @@ track.addEventListener('pointerup', e=>{
 stageDefs.forEach(sd=>{
   const row = document.createElement('div');
   row.className = 'stop'; row.dataset.id = sd.id;
+  row.style.setProperty('--pos', (sd.at * 100) + '%');
   row.style.left = (sd.at * 100) + '%';
   row.innerHTML = `<span class="node-btn"></span><span class="lbl">${sd.name}</span>`;
   row.addEventListener('click', (e)=>{
@@ -1238,6 +1369,7 @@ window.addEventListener('resize', ()=>{
   applyCameraViewportOffset();
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  updateExplode();
 });
 </script>
 </body>
