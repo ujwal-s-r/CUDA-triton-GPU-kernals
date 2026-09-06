@@ -10,14 +10,13 @@
     --bg:#f8fafc; --panel:#ffffff; --ink:#0f172a; --ink-soft:#64748b; --line:#e2e8f0;
     --accent:#10b981; --accent-soft:#ecfdf5; --tensor:#f59e0b; --tensor-soft:#fef3c7;
     --mem:#0284c7; --mem-soft:#e0f2fe; --sched:#8b5cf6; --sched-soft:#f5f3ff;
-    --radius:12px; --shadow:0 4px 6px -1px rgba(0,0,0,0.05), 0 10px 25px -3px rgba(0,0,0,0.08);
+    --radius:14px; --shadow:0 4px 6px -1px rgba(15,23,42,0.05), 0 18px 45px -12px rgba(15,23,42,0.16);
   }
   *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;width:100vw;height:100vh;max-width:100vw;max-height:100vh;
-    background:var(--bg);overflow:hidden;position:fixed;inset:0;
+  html,body{margin:0;padding:0;height:100%;background:var(--bg);overflow:hidden;
     font-family:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",Helvetica,Arial,sans-serif;
     color:var(--ink);-webkit-font-smoothing:antialiased;}
-  #stage{position:fixed;inset:0;width:100vw;height:100vh;overflow:hidden;touch-action:none;}
+  #stage{position:fixed;inset:0;touch-action:none;}
   canvas{display:block;cursor:grab;}
   canvas:active{cursor:grabbing;}
 
@@ -118,9 +117,8 @@
   #detail-specs b{color:var(--ink);}
 
   /* Pinned 3D Floating Name Tags */
-  #tag-container{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;overflow:hidden;z-index:15;}
   .tag3d{position:absolute;z-index:15;pointer-events:auto;transform:translate(-50%,-50%);
-    transition:opacity .2s, transform .2s;cursor:pointer;user-select:none;display:none;}
+    transition:opacity .2s, transform .2s;cursor:pointer;user-select:none;}
   .tag3d .tag-inner{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.94);
     backdrop-filter:blur(6px);border:1px solid rgba(226,232,240,0.9);padding:3px 8px;border-radius:6px;
     box-shadow:0 2px 6px rgba(0,0,0,0.06);font-size:10.5px;font-weight:600;color:var(--ink);white-space:nowrap;
@@ -156,7 +154,7 @@
   #handle:hover{transform:translate(-50%,-50%) scale(1.15);}
   #handle:active{cursor:grabbing;transform:translate(-50%,-50%) scale(1.22);}
   
-  .stop{position:absolute;top:50%;left:var(--pos, 0%);display:flex;flex-direction:column;align-items:center;
+  .stop{position:absolute;top:50%;display:flex;flex-direction:column;align-items:center;
     transform:translate(-50%, -50%);cursor:pointer;user-select:none;z-index:3;}
   .stop .node-btn{width:13px;height:13px;border-radius:50%;background:#fff;border:2.5px solid #cbd5e1;
     box-shadow:0 1px 3px rgba(0,0,0,.1);transition:all .18s;}
@@ -174,83 +172,19 @@
     backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:100px;
     padding:6px 14px;box-shadow:var(--shadow);}
   #controlshint b{color:var(--ink);font-weight:600;}
-
-  /* Mobile Responsive Adaptations (Screen <= 768px) */
-  @media (max-width: 768px) {
-    #topbar{padding:10px 14px;gap:6px;}
-    .topbar-left{gap:8px;}
-    #wordmark{font-size:11px;}
-    #wordmark span{display:none;}
-    .tour-btn{font-size:10.5px;padding:5px 12px;}
-    .topbar-right{gap:6px;}
-    #social-pill{padding:4px 8px;}
-    .social-handle{display:none;}
-    #stagepill{display:none;}
-
-    /* Bottom Horizontal Scrollable Layer Component Drawer */
-    #left-panel{
-      left:0;right:0;bottom:0;top:auto;width:100%;
-      max-height:118px;border-radius:16px 16px 0 0;
-      border-bottom:none;border-left:none;border-right:none;
-      box-shadow:0 -4px 20px rgba(0,0,0,0.08);padding:0;z-index:30;
-    }
-    .panel-header{padding:6px 14px 4px;display:flex;align-items:center;justify-content:space-between;}
-    .panel-title{display:none;}
-    .panel-subtitle{font-size:11.5px;}
-    .panel-hint{font-size:9.5px;margin-top:0;}
-    #comp-list{
-      flex-direction:row;overflow-x:auto;overflow-y:hidden;
-      padding:6px 12px 10px;gap:8px;-webkit-overflow-scrolling:touch;
-    }
-    .comp-item{
-      flex:0 0 auto;min-width:145px;padding:6px 10px;border-radius:8px;
-    }
-    .comp-item:hover{transform:none;}
-    .comp-name{font-size:10.5px;max-width:115px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-    .comp-inspect-btn{display:none;}
-
-    /* Right Vertical Dissection Scroller */
-    #dissectwrap{
-      position:fixed;right:10px;left:auto;top:66px;bottom:126px;
-      transform:none;width:34px;padding:16px 6px;
-      flex-direction:column;justify-content:space-between;align-items:center;
-      border-radius:24px;gap:0;z-index:25;
-    }
-    .dissect-header{display:none;}
-    #track{width:4px;height:100%;margin-top:0;flex-direction:column;}
-    #trackline{top:0;bottom:0;left:50%;right:auto;width:4px;height:100%;transform:translateX(-50%);}
-    #trackfill{top:0;left:50%;width:4px;height:0;transform:translateX(-50%);}
-    #handle{
-      left:50% !important;top:0;transform:translate(-50%,-50%);
-      width:18px;height:18px;
-    }
-    .stop{
-      left:50% !important;top:var(--pos, 0%) !important;
-      transform:translate(-50%,-50%);
-    }
-    .stop .node-btn{width:12px;height:12px;}
-    .stop .lbl{
-      position:absolute;right:18px;top:50%;left:auto;
-      transform:translateY(-50%);font-size:9.5px;padding:3px 7px;
-      border-radius:6px;background:rgba(255,255,255,0.96);
-      box-shadow:0 2px 8px rgba(0,0,0,0.1);border:1px solid var(--line);
-      display:none;pointer-events:none;
-    }
-    .stop.active .lbl{display:block;color:var(--ink);font-weight:700;}
-
-    /* Detail Card Overlay on Mobile */
-    #detail-card{
-      left:12px;right:52px;bottom:126px;width:auto;max-width:none;
-      padding:10px 14px;z-index:35;
-    }
-    .detail-body{grid-template-columns:1fr;gap:6px;}
-    #detail-title{font-size:13px;}
-    #detail-desc{font-size:10.5px;line-height:1.4;}
-    #detail-specs{font-size:9.5px;padding:6px 8px;}
-
-    #controlshint{left:12px;bottom:126px;right:auto;font-size:9px;padding:4px 8px;gap:8px;}
-    .tag3d .tag-inner{font-size:9px;padding:2px 6px;}
+  @media (max-width:900px){
+    #topbar{padding:12px 14px}.topbar-right{display:none}#wordmark span{display:none}
+    #left-panel{left:12px;top:62px;bottom:auto;width:260px;max-height:38vh}
+    #detail-card{left:12px;bottom:112px;width:calc(100vw - 24px);max-width:none}
+    #dissectwrap{left:12px;transform:none;bottom:12px;width:calc(100vw - 24px);padding:10px 18px 24px}
+    #controlshint{display:none}.stop .lbl{font-size:9px}.tag3d .tag-inner{font-size:9px}
   }
+  @media (max-width:600px){
+    #left-panel{right:12px;width:auto;max-height:30vh}.panel-hint{display:none}
+    .detail-body{grid-template-columns:1fr}.dissect-instructions{display:none}
+    .stop .lbl{max-width:52px;text-align:center;white-space:normal;line-height:1.05}
+  }
+  @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}.comp-item,.tag3d,.tour-btn{transition:none!important}}
 </style>
 </head>
 <body>
@@ -267,6 +201,7 @@
   </div>
 
   <div class="topbar-right">
+    <div id="stagepill"><b id="stagename">Closed Card</b></div>
     <div id="social-pill">
   <a href="https://github.com/ujwal-s-r" target="_blank" rel="noopener noreferrer" title="GitHub Profile">
     <img src="git.png" alt="GitHub" class="social-icon">
@@ -338,14 +273,18 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xf8fafc);
 
 const camera = new THREE.PerspectiveCamera(35, window.innerWidth/window.innerHeight, 0.1, 400);
-const renderer = new THREE.WebGLRenderer({antialias:true});
+const renderer = new THREE.WebGLRenderer({antialias:true, powerPreference:'high-performance'});
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.08;
+renderer.physicallyCorrectLights = true;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 stageEl.appendChild(renderer.domElement);
 
-scene.add(new THREE.AmbientLight(0xffffff, 0.85));
+scene.add(new THREE.HemisphereLight(0xffffff, 0xcbd5e1, 1.4));
 const key = new THREE.DirectionalLight(0xffffff, 1.15);
 key.position.set(14, 22, 16); key.castShadow = true;
 key.shadow.mapSize.set(2048, 2048);
@@ -361,10 +300,15 @@ scene.add(fill);
 const rim = new THREE.DirectionalLight(0x76b900, 0.4);
 rim.position.set(0, -8, 14);
 scene.add(rim);
+const studioGlow = new THREE.PointLight(0x38bdf8, 0.75, 35);
+studioGlow.position.set(-8, 7, 8); scene.add(studioGlow);
 
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(240,240), new THREE.ShadowMaterial({opacity:0.07}));
 ground.rotation.x = -Math.PI/2; ground.position.y = -2.4; ground.receiveShadow = true;
 scene.add(ground);
+const grid = new THREE.GridHelper(50, 50, 0xcbd5e1, 0xe8eef5);
+grid.position.y = -2.38; grid.material.transparent = true; grid.material.opacity = 0.32;
+scene.add(grid);
 
 /* =========================================================================
    MATERIALS
@@ -400,10 +344,29 @@ const M = {
   tensor: new THREE.MeshStandardMaterial({color:0xf59e0b, roughness:0.3, metalness:0.3, emissive:0xd97706, emissiveIntensity:0.5}),
   sharedmem: new THREE.MeshStandardMaterial({color:0x0284c7, roughness:0.3, metalness:0.4, emissive:0x0369a1, emissiveIntensity:0.4}),
   l1cache: new THREE.MeshStandardMaterial({color:0x6366f1, roughness:0.3, metalness:0.4, emissive:0x4f46e5, emissiveIntensity:0.35}),
+  tpc: new THREE.MeshStandardMaterial({color:0x0f766e,roughness:.28,metalness:.5,emissive:0x115e59,emissiveIntensity:.25}),
+  raster: new THREE.MeshStandardMaterial({color:0xdb2777,roughness:.3,metalness:.45,emissive:0x9d174d,emissiveIntensity:.28}),
+  memctrl: new THREE.MeshStandardMaterial({color:0x0369a1,roughness:.28,metalness:.55,emissive:0x075985,emissiveIntensity:.3}),
+  rtcore: new THREE.MeshStandardMaterial({color:0xdc2626,roughness:.25,metalness:.45,emissive:0x991b1b,emissiveIntensity:.38}),
+  sfu: new THREE.MeshStandardMaterial({color:0x0891b2,roughness:.28,metalness:.4,emissive:0x0e7490,emissiveIntensity:.32}),
+  ldst: new THREE.MeshStandardMaterial({color:0x2563eb,roughness:.28,metalness:.42,emissive:0x1d4ed8,emissiveIntensity:.32}),
+  datapath: new THREE.LineBasicMaterial({color:0x67e8f9,transparent:true,opacity:.62}),
 };
 
-function box(w,h,d,mat){ return new THREE.Mesh(new THREE.BoxGeometry(w,h,d), mat); }
+function box(w,h,d,mat){
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w,h,d,2,1,2), mat);
+  mesh.castShadow = true; mesh.receiveShadow = true;
+  return mesh;
+}
 function cyl(r1,r2,h,seg,mat){ return new THREE.Mesh(new THREE.CylinderGeometry(r1,r2,h,seg), mat); }
+function addTechnicalEdges(group, opacity=.22){
+  group.traverse(obj=>{
+    if(!obj.isMesh || obj.userData.noEdges) return;
+    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(obj.geometry, 28),
+      new THREE.LineBasicMaterial({color:0x94a3b8,transparent:true,opacity,depthWrite:false}));
+    edges.userData.noEdges = true; obj.add(edges);
+  });
+}
 
 const root = new THREE.Group();
 scene.add(root);
@@ -446,6 +409,12 @@ const fanRotators = [];
   fanAssembly.userData.tagId = 'fans';
   shroudGroup.add(fanAssembly);
   fanRotators.push(fanAssembly);
+});
+[-2.4,2.4].forEach(fx=>{
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(1.5,0.055,10,64),
+    fadeMat({color:0x6b7280,roughness:.2,metalness:.9}));
+  ring.rotation.x=Math.PI/2; ring.position.set(fx,.57,0); ring.userData.tagId='fans';
+  shroudGroup.add(ring);
 });
 
 for(let g=-1.4; g<=1.4; g+=0.28){
@@ -505,6 +474,15 @@ pcbGroup.userData = { id:'pcb', range:[0.22, 0.40], origin:new THREE.Vector3(0, 
 const pcbBoard = box(CARD_W-0.2, 0.12, CARD_D-0.15, M.pcb);
 pcbBoard.castShadow = true; pcbBoard.receiveShadow = true; pcbBoard.userData.tagId = 'pcb';
 pcbGroup.add(pcbBoard);
+const traceMat = new THREE.LineBasicMaterial({color:0x34d399,transparent:true,opacity:.42});
+for(let i=0;i<18;i++){
+  const z=-1.48+i*.17, bend=(i%3-1)*.18;
+  const geo=new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(-4.7,.073,z),new THREE.Vector3(-2.8,.073,z),
+    new THREE.Vector3(-2.35,.073,z+bend),new THREE.Vector3(2.55,.073,z+bend),
+    new THREE.Vector3(2.95,.073,z)]);
+  const trace=new THREE.Line(geo,traceMat); trace.userData.noEdges=true; pcbGroup.add(trace);
+}
 
 const vramChips = [];
 const vramPositions = [
@@ -549,6 +527,15 @@ const l2slab = box(1.6, 0.14, 0.45, M.l2);
 l2slab.position.set(0, 0.24, 0); l2slab.castShadow = true; l2slab.userData.tagId = 'l2';
 
 packageGroup.add(substrate, dieMesh, l2slab);
+const dieGridMat=fadeMat({color:0x38bdf8,roughness:.25,metalness:.45,emissive:0x0369a1,emissiveIntensity:.45});
+for(let x=-.66;x<=.66;x+=.22) for(let z=-.66;z<=.66;z+=.22){
+  const tile=box(.16,.025,.16,dieGridMat); tile.position.set(x,.205,z); tile.userData.tagId='die'; packageGroup.add(tile);
+}
+const memoryControllers=[];
+[-.72,-.24,.24,.72].forEach(x=>{
+  const mc=box(.34,.12,.24,M.memctrl); mc.position.set(x,.19,-1.08);
+  mc.userData.tagId='memctrl'; packageGroup.add(mc); memoryControllers.push(mc);
+});
 packageGroup.position.copy(packageGroup.userData.origin);
 root.add(packageGroup);
 
@@ -558,11 +545,19 @@ root.add(packageGroup);
 const gpcGroup = new THREE.Group();
 gpcGroup.userData = { id:'gpc', range:[0.48, 0.68], origin:new THREE.Vector3(-0.1, 0.65, 0), offset:new THREE.Vector3(0, 1.0, 0) };
 const gpcBlocks = [];
+const tpcBlocks=[];
+const rasterBlocks=[];
 [[-0.65,-0.65],[0.65,-0.65],[-0.65,0.65],[0.65,0.65]].forEach(([x,z], idx)=>{
   const gp = box(1.05, 0.35, 1.05, M.gpc);
   gp.position.set(x, 0, z); gp.castShadow = true;
   gp.userData.homeXZ = [x, z]; gp.userData.tagId = 'gpc' + idx;
   gpcGroup.add(gp); gpcBlocks.push(gp);
+  [-.24,.24].forEach((tz,j)=>{
+    const tpc=box(.72,.12,.34,M.tpc); tpc.position.set(x,.245,z+tz); tpc.userData.tagId='tpc0';
+    gpcGroup.add(tpc); if(idx===0)tpcBlocks.push(tpc);
+  });
+  const rast=box(.18,.16,.82,M.raster); rast.position.set(x-.40,.26,z); rast.userData.tagId='raster';
+  gpcGroup.add(rast); if(idx===0)rasterBlocks.push(rast);
 });
 gpcGroup.position.copy(gpcGroup.userData.origin);
 root.add(gpcGroup);
@@ -601,6 +596,7 @@ const cudaCores = [];
 const tensorCores = [];
 const regFiles = [];
 const warpSchedulers = [];
+const rtCores = [], sfuUnits = [], ldstUnits = [], operandCollectors=[];
 
 subcorePositions.forEach(([scX, scZ], scIdx)=>{
   const scPlate = box(2.0, 0.10, 0.98, M['subcore'+scIdx]);
@@ -621,6 +617,12 @@ subcorePositions.forEach(([scX, scZ], scIdx)=>{
   smGroup.add(reg);
   regFiles.push(reg);
 
+  // Four visible register banks make the banked SRAM organization legible.
+  for(let bank=0;bank<4;bank++){
+    const rb=box(.075,.205,.15,M.regfile);
+    rb.position.set(scX-.25,.13,scZ-.27+bank*.18); rb.userData.tagId='reg'+scIdx; smGroup.add(rb);
+  }
+
   for(let cr=0; cr<2; cr++){
     for(let cc=0; cc<4; cc++){
       const c = box(0.09, 0.14, 0.13, M.cuda);
@@ -632,15 +634,38 @@ subcorePositions.forEach(([scX, scZ], scIdx)=>{
   }
 
   const tc = box(0.32, 0.22, 0.76, M.tensor);
-  tc.position.set(scX + 0.74, 0.12, scZ);
+  tc.position.set(scX + 0.60, 0.12, scZ-.20);
   tc.userData.tagId = 'tensor' + scIdx;
   smGroup.add(tc);
   tensorCores.push(tc);
+
+  const rt=box(.22,.22,.32,M.rtcore); rt.position.set(scX+.82,.12,scZ+.22); rt.userData.tagId='rt'+scIdx;
+  const sfu=box(.18,.18,.32,M.sfu); sfu.position.set(scX+.34,.11,scZ+.22); sfu.userData.tagId='sfu'+scIdx;
+  const ld=box(.18,.18,.32,M.ldst); ld.position.set(scX+.08,.11,scZ+.22); ld.userData.tagId='ldst'+scIdx;
+  const oc=box(.12,.12,.76,M.subcoreDivider); oc.position.set(scX-.53,.09,scZ); oc.userData.tagId='operand';
+  smGroup.add(rt,sfu,ld,oc); rtCores.push(rt); sfuUnits.push(sfu); ldstUnits.push(ld); operandCollectors.push(oc);
+
+  // Cyan dispatch paths clarify scheduler -> operand collector -> execution flow.
+  const pathGeo=new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(scX-.74,.225,scZ),new THREE.Vector3(scX-.53,.225,scZ),
+    new THREE.Vector3(scX+.86,.225,scZ)]);
+  const path=new THREE.Line(pathGeo,M.datapath); path.userData.noEdges=true; smGroup.add(path);
 });
+
+// Shared-memory bank stripes and front-end instruction blocks.
+for(let bank=0;bank<32;bank++){
+  const stripe=box(.105,.025,.40,bank%2?M.sharedmem:M.memctrl);
+  stripe.position.set(-2.05+bank*.132,.15,1.6); stripe.userData.tagId='shared'; smGroup.add(stripe);
+}
+const instructionBuffer=box(1.35,.16,.28,M.l1cache); instructionBuffer.position.set(-1.25,.13,-1.40); instructionBuffer.userData.tagId='l1';
+const dispatchCrossbar=box(1.35,.16,.28,M.warpSched); dispatchCrossbar.position.set(1.25,.13,-1.40); dispatchCrossbar.userData.tagId='sched0';
+smGroup.add(instructionBuffer,dispatchCrossbar);
 
 smGroup.position.copy(smGroup.userData.origin);
 smGroup.scale.set(0.001, 0.001, 0.001);
 root.add(smGroup);
+[shroudGroup,heatsinkGroup,backplateGroup,pcbGroup,packageGroup,gpcGroup,smGroup]
+  .forEach((g,i)=>addTechnicalEdges(g,i===4||i===6?.32:.18));
 
 /* =========================================================================
    GLOWING SELECTION HIGHLIGHT RIG
@@ -731,10 +756,10 @@ const componentData = {
     specs: '<b>Layers:</b> 16 High-Density | <b>Traces:</b> High-Frequency PCIe Gen5 & GDDR6X'
   },
   vram: {
-    title: 'VRAM / HBM3 Memory (8 Modules)', badge: 'Memory', type: 'mem',
+    title: 'GDDR6X VRAM (8 Packages)', badge: 'Memory', type: 'mem',
     stage: 2, anchor: vramChips[0],
-    desc: 'High-Bandwidth Global VRAM. Holds weights, activations, and KV Cache. Streams data to on-die caches at ~3.35 TB/s (400-800 cycles away).',
-    specs: '<b>Bandwidth:</b> 3.35 TB/s | <b>Capacity:</b> 80-144 GB | <b>Latency:</b> 400-800 cyc'
+    desc: 'Off-die graphics memory that stores model weights, activations, KV cache, textures, and frame buffers. Eight packages are shown as a visual abstraction; exact capacity and bandwidth depend on the GPU SKU.',
+    specs: '<b>Type:</b> GDDR6X concept | <b>Bus:</b> SKU-dependent | <b>Latency:</b> Hundreds of cycles'
   },
   vrm: {
     title: '24-Phase Digital VRM Power', badge: 'Power', type: 'default',
@@ -745,14 +770,19 @@ const componentData = {
   die: {
     title: 'Monolithic TSMC 4nm Silicon Die', badge: 'Silicon', type: 'default',
     stage: 3, anchor: dieMesh,
-    desc: 'Massive monolithic silicon die housing 80+ billion transistors, 6-8 GPCs, and the unified L2 Cache Crossbar.',
-    specs: '<b>Die Area:</b> 814 mm² | <b>Process:</b> TSMC 4N | <b>Transistors:</b> 80+ Billion'
+    desc: 'Conceptual monolithic NVIDIA-class GPU die containing GPCs, memory controllers, cache, interconnect, and fixed-function engines. Values vary significantly between architectures and SKUs.',
+    specs: '<b>Process:</b> Advanced-node concept | <b>Layout:</b> Not to scale | <b>Model:</b> Educational composite'
   },
   l2: {
     title: '50MB Unified L2 Cache Crossbar', badge: 'Memory', type: 'mem',
     stage: 3, anchor: l2slab,
-    desc: 'Die-level shared SRAM cache that arbitrates all memory traffic between GPCs and VRAM, avoiding slow off-chip memory trips.',
-    specs: '<b>Capacity:</b> 50 MB | <b>Bandwidth:</b> ~6.0 TB/s | <b>Latency:</b> 150-200 cyc'
+    desc: 'Die-level shared SRAM that reduces off-chip traffic and connects compute partitions with memory controllers through the on-chip fabric.',
+    specs: '<b>Capacity:</b> Architecture-dependent | <b>Role:</b> Shared last-level cache | <b>Latency:</b> Lower than VRAM'
+  },
+  memctrl: {
+    title:'Memory Controller Partitions',badge:'Memory I/O',type:'mem',stage:3,anchor:memoryControllers[0],
+    desc:'Independent memory partitions connect the shared L2 slices to external VRAM channels. Requests are queued, coalesced, scheduled, and translated into physical memory transactions.',
+    specs:'<b>Shown:</b> 4 conceptual partitions | <b>Path:</b> SM → L2 → Controller → VRAM | <b>Scale:</b> Educational'
   },
   gpc0: {
     title: 'GPC Cluster 0 (GPU Processing Cluster)', badge: 'Compute', type: 'default',
@@ -765,6 +795,16 @@ const componentData = {
     stage: 4, anchor: gpcBlocks[1],
     desc: 'Independent GPU Processing Cluster executing parallel thread blocks concurrently.',
     specs: '<b>Function:</b> Grid Partitioning'
+  },
+  tpc0: {
+    title:'Texture Processing Clusters (TPCs)',badge:'Compute Cluster',type:'default',stage:4,anchor:tpcBlocks[0],
+    desc:'A GPC is subdivided into TPCs. Each TPC groups streaming multiprocessors with texture and geometry resources; the exact composition varies by architecture.',
+    specs:'<b>Hierarchy:</b> GPU → GPC → TPC → SM | <b>Shown:</b> 2 TPCs/GPC | <b>Scale:</b> Conceptual'
+  },
+  raster: {
+    title:'Raster / Primitive Engine',badge:'Graphics Front End',type:'tensor',stage:4,anchor:rasterBlocks[0],
+    desc:'Fixed-function graphics hardware performs primitive setup, rasterization, and work distribution before fragments reach shader execution resources.',
+    specs:'<b>Input:</b> Primitives | <b>Output:</b> Fragment work | <b>Compute workloads:</b> Usually bypass this path'
   },
   sm: {
     title: 'Streaming Multiprocessor (SM)', badge: 'Compute', type: 'default',
@@ -819,6 +859,26 @@ const componentData = {
     stage: 6, anchor: tensorCores[0],
     desc: 'Specialized systolic matrix array. All 32 warp threads feed 16x16 matrix fragments, computing hundreds of FLOPs in 1 step.',
     specs: '<b>Granularity:</b> 16x16 Matrix Tile | <b>Throughput:</b> Hundreds of FLOPs/cycle'
+  },
+  rt0: {
+    title:'Ray-Tracing Core',badge:'Fixed Function',type:'tensor',stage:6,anchor:rtCores[0],
+    desc:'Dedicated traversal and intersection hardware accelerates bounding-volume hierarchy tests and ray–triangle intersections, reducing work on scalar CUDA lanes.',
+    specs:'<b>Work:</b> BVH traversal + intersection | <b>Used by:</b> RT pipelines | <b>Generation:</b> Architecture-dependent'
+  },
+  sfu0: {
+    title:'Special Function Units',badge:'Math Pipeline',type:'default',stage:6,anchor:sfuUnits[0],
+    desc:'Specialized execution lanes handle transcendental and interpolation-style operations such as reciprocal, square root, sine, cosine, and attribute interpolation.',
+    specs:'<b>Operations:</b> Transcendentals | <b>Scheduling:</b> Warp-issued | <b>Throughput:</b> Instruction-dependent'
+  },
+  ldst0: {
+    title:'Load / Store Units',badge:'Data Movement',type:'mem',stage:6,anchor:ldstUnits[0],
+    desc:'Address-generation and memory-pipeline units move per-thread operands between registers, shared memory, caches, and global memory.',
+    specs:'<b>Path:</b> Registers ↔ L1/Shared ↔ L2 | <b>Behavior:</b> Coalescing matters | <b>Latency:</b> Memory-level dependent'
+  },
+  operand: {
+    title:'Operand Collector & Dispatch',badge:'Issue Logic',type:'sched',stage:6,anchor:operandCollectors[0],
+    desc:'Collects source operands from banked register files, resolves bank pressure, and feeds eligible instructions into the correct execution pipeline.',
+    specs:'<b>Input:</b> Issued warp instruction | <b>Output:</b> Pipeline operands | <b>Constraint:</b> Register-bank conflicts'
   }
 };
 
@@ -920,18 +980,8 @@ function updateExplode(){
     el.classList.toggle('active', el.dataset.id === current.id);
   });
 
-  const isMob = window.innerWidth <= 768;
-  if(isMob){
-    document.getElementById('trackfill').style.height = (progress * 100) + '%';
-    document.getElementById('trackfill').style.width = '4px';
-    document.getElementById('handle').style.top = (progress * 100) + '%';
-    document.getElementById('handle').style.left = '50%';
-  } else {
-    document.getElementById('trackfill').style.width = (progress * 100) + '%';
-    document.getElementById('trackfill').style.height = '4px';
-    document.getElementById('handle').style.left = (progress * 100) + '%';
-    document.getElementById('handle').style.top = '50%';
-  }
+  document.getElementById('trackfill').style.width = (progress * 100) + '%';
+  document.getElementById('handle').style.left = (progress * 100) + '%';
 }
 
 /* =========================================================================
@@ -1036,7 +1086,6 @@ function update3DTags(){
     if(!el) return;
 
     if(comp.stage !== currentStageIndex || !comp.anchor){
-      el.style.display = 'none';
       el.style.opacity = 0;
       el.style.pointerEvents = 'none';
       return;
@@ -1045,8 +1094,7 @@ function update3DTags(){
     comp.anchor.getWorldPosition(pos);
     pos.project(camera);
 
-    if(pos.z > 1.0 || pos.z < -1.0){
-      el.style.display = 'none';
+    if(pos.z > 1.0){
       el.style.opacity = 0;
       el.style.pointerEvents = 'none';
       return;
@@ -1055,16 +1103,14 @@ function update3DTags(){
     const x = (pos.x * 0.5 + 0.5) * window.innerWidth;
     const y = (-pos.y * 0.5 + 0.5) * window.innerHeight;
 
-    if(x < 20 || x > window.innerWidth - 20 || y < 40 || y > window.innerHeight - 40){
-      el.style.display = 'none';
+    if(x < -40 || x > window.innerWidth + 40 || y < -40 || y > window.innerHeight + 40){
       el.style.opacity = 0;
       el.style.pointerEvents = 'none';
       return;
     }
 
-    el.style.left = Math.round(x) + 'px';
-    el.style.top = Math.round(y) + 'px';
-    el.style.display = 'block';
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
     el.style.opacity = 1;
     el.style.pointerEvents = 'auto';
   });
@@ -1079,17 +1125,10 @@ const target = new THREE.Vector3(0, 0.2, 0);
 let customCameraPos = null, customCameraTarget = null;
 
 function applyCameraViewportOffset(){
-  // Shift rendering offset so 3D model is positioned nicely to the right and above bottom slider on desktop,
-  // or centered in the top majority area on mobile
-  if(window.innerWidth > 768){
-    const offsetX = window.innerWidth > 900 ? -120 : 0;
-    const offsetY = 45;
-    camera.setViewOffset(window.innerWidth, window.innerHeight, offsetX, offsetY, window.innerWidth, window.innerHeight);
-  } else {
-    // On mobile, lift model slightly so 3D visual occupies upper screen freely above bottom component drawer
-    const offsetY = -35;
-    camera.setViewOffset(window.innerWidth, window.innerHeight, 0, offsetY, window.innerWidth, window.innerHeight);
-  }
+  // Shift rendering offset so 3D model is positioned nicely to the right and above bottom slider
+  const offsetX = window.innerWidth > 900 ? -120 : 0;
+  const offsetY = 45;
+  camera.setViewOffset(window.innerWidth, window.innerHeight, offsetX, offsetY, window.innerWidth, window.innerHeight);
 }
 applyCameraViewportOffset();
 
@@ -1125,8 +1164,6 @@ function updateCamera(){
 
 const canvas = renderer.domElement;
 let dragging = false, dragStartX=0, dragStartY=0, lastX=0, lastY=0;
-let touchStartDist = 0;
-let initialZoom = userZoom;
 
 canvas.addEventListener('pointerdown', e=>{
   dragging = false; dragStartX = lastX = e.clientX; dragStartY = lastY = e.clientY;
@@ -1152,45 +1189,17 @@ canvas.addEventListener('wheel', e=>{
   userZoom = clamp(userZoom * (1 + e.deltaY * 0.001), 0.5, 2.8);
 }, {passive:false});
 
-// Touch Pinch-to-Zoom on Mobile
-canvas.addEventListener('touchstart', e => {
-  if(e.touches.length === 2){
-    touchStartDist = Math.hypot(
-      e.touches[0].clientX - e.touches[1].clientX,
-      e.touches[0].clientY - e.touches[1].clientY
-    );
-    initialZoom = userZoom;
-  }
-}, {passive: true});
-
-canvas.addEventListener('touchmove', e => {
-  if(e.touches.length === 2 && touchStartDist > 0){
-    const dist = Math.hypot(
-      e.touches[0].clientX - e.touches[1].clientX,
-      e.touches[0].clientY - e.touches[1].clientY
-    );
-    const scale = touchStartDist / (dist || 1);
-    userZoom = clamp(initialZoom * scale, 0.5, 2.8);
-  }
-}, {passive: true});
-
 /* =========================================================================
-   MAGNETIC CHECKPOINT DISSECTION TRACK (HORIZONTAL PC / VERTICAL MOBILE)
+   MAGNETIC CHECKPOINT DISSECTION TRACK (HORIZONTAL)
    ========================================================================= */
 const track = document.getElementById('track');
 let sliderDragging = false;
 
-function setProgressFromPointer(e){
+function setProgressFromPointer(clientX){
   stopAutoTour();
   customCameraTarget = null;
   const rect = track.getBoundingClientRect();
-  const isMob = window.innerWidth <= 768;
-  let t;
-  if(isMob){
-    t = clamp((e.clientY - rect.top) / rect.height, 0, 1);
-  } else {
-    t = clamp((e.clientX - rect.left) / rect.width, 0, 1);
-  }
+  let t = clamp((clientX - rect.left) / rect.width, 0, 1);
   for(let sd of stageDefs){
     if(Math.abs(t - sd.at) < 0.04){ t = sd.at; break; }
   }
@@ -1199,11 +1208,11 @@ function setProgressFromPointer(e){
 
 track.addEventListener('pointerdown', e=>{
   sliderDragging = true;
-  setProgressFromPointer(e);
+  setProgressFromPointer(e.clientX);
   track.setPointerCapture(e.pointerId);
 });
 track.addEventListener('pointermove', e=>{
-  if(sliderDragging) setProgressFromPointer(e);
+  if(sliderDragging) setProgressFromPointer(e.clientX);
 });
 track.addEventListener('pointerup', e=>{
   sliderDragging = false;
@@ -1219,7 +1228,6 @@ track.addEventListener('pointerup', e=>{
 stageDefs.forEach(sd=>{
   const row = document.createElement('div');
   row.className = 'stop'; row.dataset.id = sd.id;
-  row.style.setProperty('--pos', (sd.at * 100) + '%');
   row.style.left = (sd.at * 100) + '%';
   row.innerHTML = `<span class="node-btn"></span><span class="lbl">${sd.name}</span>`;
   row.addEventListener('click', (e)=>{
@@ -1236,7 +1244,8 @@ stageDefs.forEach(sd=>{
    ========================================================================= */
 const clickableMeshes = [
   shroudBody, pcbBoard, dieMesh, l2slab, smChassisFrame, l1Cache, sharedMem,
-  ...vramChips, ...gpcBlocks, ...subcoreMeshes, ...warpSchedulers, ...regFiles, ...cudaCores, ...tensorCores
+  ...vramChips,...memoryControllers,...gpcBlocks,...tpcBlocks,...rasterBlocks,...subcoreMeshes,
+  ...warpSchedulers,...regFiles,...cudaCores,...tensorCores,...rtCores,...sfuUnits,...ldstUnits,...operandCollectors
 ];
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
@@ -1356,6 +1365,8 @@ function animate(){
   updateExplode();
   updateCamera();
   update3DTags();
+  highlightMesh.material.opacity = 0.68 + Math.sin(performance.now()*.004)*.18;
+  glowMesh.material.opacity = 0.16 + Math.sin(performance.now()*.004)*.07;
   renderer.render(scene, camera);
 }
 
@@ -1369,7 +1380,7 @@ window.addEventListener('resize', ()=>{
   applyCameraViewportOffset();
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
-  updateExplode();
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 });
 </script>
 </body>
