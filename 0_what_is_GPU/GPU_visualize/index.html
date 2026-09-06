@@ -344,6 +344,13 @@ const M = {
   tensor: new THREE.MeshStandardMaterial({color:0xf59e0b, roughness:0.3, metalness:0.3, emissive:0xd97706, emissiveIntensity:0.5}),
   sharedmem: new THREE.MeshStandardMaterial({color:0x0284c7, roughness:0.3, metalness:0.4, emissive:0x0369a1, emissiveIntensity:0.4}),
   l1cache: new THREE.MeshStandardMaterial({color:0x6366f1, roughness:0.3, metalness:0.4, emissive:0x4f46e5, emissiveIntensity:0.35}),
+  tpc: new THREE.MeshStandardMaterial({color:0x0f766e,roughness:.28,metalness:.5,emissive:0x115e59,emissiveIntensity:.25}),
+  raster: new THREE.MeshStandardMaterial({color:0xdb2777,roughness:.3,metalness:.45,emissive:0x9d174d,emissiveIntensity:.28}),
+  memctrl: new THREE.MeshStandardMaterial({color:0x0369a1,roughness:.28,metalness:.55,emissive:0x075985,emissiveIntensity:.3}),
+  rtcore: new THREE.MeshStandardMaterial({color:0xdc2626,roughness:.25,metalness:.45,emissive:0x991b1b,emissiveIntensity:.38}),
+  sfu: new THREE.MeshStandardMaterial({color:0x0891b2,roughness:.28,metalness:.4,emissive:0x0e7490,emissiveIntensity:.32}),
+  ldst: new THREE.MeshStandardMaterial({color:0x2563eb,roughness:.28,metalness:.42,emissive:0x1d4ed8,emissiveIntensity:.32}),
+  datapath: new THREE.LineBasicMaterial({color:0x67e8f9,transparent:true,opacity:.62}),
 };
 
 function box(w,h,d,mat){
@@ -524,6 +531,11 @@ const dieGridMat=fadeMat({color:0x38bdf8,roughness:.25,metalness:.45,emissive:0x
 for(let x=-.66;x<=.66;x+=.22) for(let z=-.66;z<=.66;z+=.22){
   const tile=box(.16,.025,.16,dieGridMat); tile.position.set(x,.205,z); tile.userData.tagId='die'; packageGroup.add(tile);
 }
+const memoryControllers=[];
+[-.72,-.24,.24,.72].forEach(x=>{
+  const mc=box(.34,.12,.24,M.memctrl); mc.position.set(x,.19,-1.08);
+  mc.userData.tagId='memctrl'; packageGroup.add(mc); memoryControllers.push(mc);
+});
 packageGroup.position.copy(packageGroup.userData.origin);
 root.add(packageGroup);
 
@@ -533,11 +545,19 @@ root.add(packageGroup);
 const gpcGroup = new THREE.Group();
 gpcGroup.userData = { id:'gpc', range:[0.48, 0.68], origin:new THREE.Vector3(-0.1, 0.65, 0), offset:new THREE.Vector3(0, 1.0, 0) };
 const gpcBlocks = [];
+const tpcBlocks=[];
+const rasterBlocks=[];
 [[-0.65,-0.65],[0.65,-0.65],[-0.65,0.65],[0.65,0.65]].forEach(([x,z], idx)=>{
   const gp = box(1.05, 0.35, 1.05, M.gpc);
   gp.position.set(x, 0, z); gp.castShadow = true;
   gp.userData.homeXZ = [x, z]; gp.userData.tagId = 'gpc' + idx;
   gpcGroup.add(gp); gpcBlocks.push(gp);
+  [-.24,.24].forEach((tz,j)=>{
+    const tpc=box(.72,.12,.34,M.tpc); tpc.position.set(x,.245,z+tz); tpc.userData.tagId='tpc0';
+    gpcGroup.add(tpc); if(idx===0)tpcBlocks.push(tpc);
+  });
+  const rast=box(.18,.16,.82,M.raster); rast.position.set(x-.40,.26,z); rast.userData.tagId='raster';
+  gpcGroup.add(rast); if(idx===0)rasterBlocks.push(rast);
 });
 gpcGroup.position.copy(gpcGroup.userData.origin);
 root.add(gpcGroup);
@@ -576,6 +596,7 @@ const cudaCores = [];
 const tensorCores = [];
 const regFiles = [];
 const warpSchedulers = [];
+const rtCores = [], sfuUnits = [], ldstUnits = [], operandCollectors=[];
 
 subcorePositions.forEach(([scX, scZ], scIdx)=>{
   const scPlate = box(2.0, 0.10, 0.98, M['subcore'+scIdx]);
@@ -596,6 +617,12 @@ subcorePositions.forEach(([scX, scZ], scIdx)=>{
   smGroup.add(reg);
   regFiles.push(reg);
 
+  // Four visible register banks make the banked SRAM organization legible.
+  for(let bank=0;bank<4;bank++){
+    const rb=box(.075,.205,.15,M.regfile);
+    rb.position.set(scX-.25,.13,scZ-.27+bank*.18); rb.userData.tagId='reg'+scIdx; smGroup.add(rb);
+  }
+
   for(let cr=0; cr<2; cr++){
     for(let cc=0; cc<4; cc++){
       const c = box(0.09, 0.14, 0.13, M.cuda);
@@ -607,11 +634,32 @@ subcorePositions.forEach(([scX, scZ], scIdx)=>{
   }
 
   const tc = box(0.32, 0.22, 0.76, M.tensor);
-  tc.position.set(scX + 0.74, 0.12, scZ);
+  tc.position.set(scX + 0.60, 0.12, scZ-.20);
   tc.userData.tagId = 'tensor' + scIdx;
   smGroup.add(tc);
   tensorCores.push(tc);
+
+  const rt=box(.22,.22,.32,M.rtcore); rt.position.set(scX+.82,.12,scZ+.22); rt.userData.tagId='rt'+scIdx;
+  const sfu=box(.18,.18,.32,M.sfu); sfu.position.set(scX+.34,.11,scZ+.22); sfu.userData.tagId='sfu'+scIdx;
+  const ld=box(.18,.18,.32,M.ldst); ld.position.set(scX+.08,.11,scZ+.22); ld.userData.tagId='ldst'+scIdx;
+  const oc=box(.12,.12,.76,M.subcoreDivider); oc.position.set(scX-.53,.09,scZ); oc.userData.tagId='operand';
+  smGroup.add(rt,sfu,ld,oc); rtCores.push(rt); sfuUnits.push(sfu); ldstUnits.push(ld); operandCollectors.push(oc);
+
+  // Cyan dispatch paths clarify scheduler -> operand collector -> execution flow.
+  const pathGeo=new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(scX-.74,.225,scZ),new THREE.Vector3(scX-.53,.225,scZ),
+    new THREE.Vector3(scX+.86,.225,scZ)]);
+  const path=new THREE.Line(pathGeo,M.datapath); path.userData.noEdges=true; smGroup.add(path);
 });
+
+// Shared-memory bank stripes and front-end instruction blocks.
+for(let bank=0;bank<32;bank++){
+  const stripe=box(.105,.025,.40,bank%2?M.sharedmem:M.memctrl);
+  stripe.position.set(-2.05+bank*.132,.15,1.6); stripe.userData.tagId='shared'; smGroup.add(stripe);
+}
+const instructionBuffer=box(1.35,.16,.28,M.l1cache); instructionBuffer.position.set(-1.25,.13,-1.40); instructionBuffer.userData.tagId='l1';
+const dispatchCrossbar=box(1.35,.16,.28,M.warpSched); dispatchCrossbar.position.set(1.25,.13,-1.40); dispatchCrossbar.userData.tagId='sched0';
+smGroup.add(instructionBuffer,dispatchCrossbar);
 
 smGroup.position.copy(smGroup.userData.origin);
 smGroup.scale.set(0.001, 0.001, 0.001);
@@ -731,6 +779,11 @@ const componentData = {
     desc: 'Die-level shared SRAM that reduces off-chip traffic and connects compute partitions with memory controllers through the on-chip fabric.',
     specs: '<b>Capacity:</b> Architecture-dependent | <b>Role:</b> Shared last-level cache | <b>Latency:</b> Lower than VRAM'
   },
+  memctrl: {
+    title:'Memory Controller Partitions',badge:'Memory I/O',type:'mem',stage:3,anchor:memoryControllers[0],
+    desc:'Independent memory partitions connect the shared L2 slices to external VRAM channels. Requests are queued, coalesced, scheduled, and translated into physical memory transactions.',
+    specs:'<b>Shown:</b> 4 conceptual partitions | <b>Path:</b> SM → L2 → Controller → VRAM | <b>Scale:</b> Educational'
+  },
   gpc0: {
     title: 'GPC Cluster 0 (GPU Processing Cluster)', badge: 'Compute', type: 'default',
     stage: 4, anchor: gpcBlocks[0],
@@ -742,6 +795,16 @@ const componentData = {
     stage: 4, anchor: gpcBlocks[1],
     desc: 'Independent GPU Processing Cluster executing parallel thread blocks concurrently.',
     specs: '<b>Function:</b> Grid Partitioning'
+  },
+  tpc0: {
+    title:'Texture Processing Clusters (TPCs)',badge:'Compute Cluster',type:'default',stage:4,anchor:tpcBlocks[0],
+    desc:'A GPC is subdivided into TPCs. Each TPC groups streaming multiprocessors with texture and geometry resources; the exact composition varies by architecture.',
+    specs:'<b>Hierarchy:</b> GPU → GPC → TPC → SM | <b>Shown:</b> 2 TPCs/GPC | <b>Scale:</b> Conceptual'
+  },
+  raster: {
+    title:'Raster / Primitive Engine',badge:'Graphics Front End',type:'tensor',stage:4,anchor:rasterBlocks[0],
+    desc:'Fixed-function graphics hardware performs primitive setup, rasterization, and work distribution before fragments reach shader execution resources.',
+    specs:'<b>Input:</b> Primitives | <b>Output:</b> Fragment work | <b>Compute workloads:</b> Usually bypass this path'
   },
   sm: {
     title: 'Streaming Multiprocessor (SM)', badge: 'Compute', type: 'default',
@@ -796,6 +859,26 @@ const componentData = {
     stage: 6, anchor: tensorCores[0],
     desc: 'Specialized systolic matrix array. All 32 warp threads feed 16x16 matrix fragments, computing hundreds of FLOPs in 1 step.',
     specs: '<b>Granularity:</b> 16x16 Matrix Tile | <b>Throughput:</b> Hundreds of FLOPs/cycle'
+  },
+  rt0: {
+    title:'Ray-Tracing Core',badge:'Fixed Function',type:'tensor',stage:6,anchor:rtCores[0],
+    desc:'Dedicated traversal and intersection hardware accelerates bounding-volume hierarchy tests and ray–triangle intersections, reducing work on scalar CUDA lanes.',
+    specs:'<b>Work:</b> BVH traversal + intersection | <b>Used by:</b> RT pipelines | <b>Generation:</b> Architecture-dependent'
+  },
+  sfu0: {
+    title:'Special Function Units',badge:'Math Pipeline',type:'default',stage:6,anchor:sfuUnits[0],
+    desc:'Specialized execution lanes handle transcendental and interpolation-style operations such as reciprocal, square root, sine, cosine, and attribute interpolation.',
+    specs:'<b>Operations:</b> Transcendentals | <b>Scheduling:</b> Warp-issued | <b>Throughput:</b> Instruction-dependent'
+  },
+  ldst0: {
+    title:'Load / Store Units',badge:'Data Movement',type:'mem',stage:6,anchor:ldstUnits[0],
+    desc:'Address-generation and memory-pipeline units move per-thread operands between registers, shared memory, caches, and global memory.',
+    specs:'<b>Path:</b> Registers ↔ L1/Shared ↔ L2 | <b>Behavior:</b> Coalescing matters | <b>Latency:</b> Memory-level dependent'
+  },
+  operand: {
+    title:'Operand Collector & Dispatch',badge:'Issue Logic',type:'sched',stage:6,anchor:operandCollectors[0],
+    desc:'Collects source operands from banked register files, resolves bank pressure, and feeds eligible instructions into the correct execution pipeline.',
+    specs:'<b>Input:</b> Issued warp instruction | <b>Output:</b> Pipeline operands | <b>Constraint:</b> Register-bank conflicts'
   }
 };
 
@@ -1161,7 +1244,8 @@ stageDefs.forEach(sd=>{
    ========================================================================= */
 const clickableMeshes = [
   shroudBody, pcbBoard, dieMesh, l2slab, smChassisFrame, l1Cache, sharedMem,
-  ...vramChips, ...gpcBlocks, ...subcoreMeshes, ...warpSchedulers, ...regFiles, ...cudaCores, ...tensorCores
+  ...vramChips,...memoryControllers,...gpcBlocks,...tpcBlocks,...rasterBlocks,...subcoreMeshes,
+  ...warpSchedulers,...regFiles,...cudaCores,...tensorCores,...rtCores,...sfuUnits,...ldstUnits,...operandCollectors
 ];
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
