@@ -10,7 +10,7 @@
     --bg:#f8fafc; --panel:#ffffff; --ink:#0f172a; --ink-soft:#64748b; --line:#e2e8f0;
     --accent:#10b981; --accent-soft:#ecfdf5; --tensor:#f59e0b; --tensor-soft:#fef3c7;
     --mem:#0284c7; --mem-soft:#e0f2fe; --sched:#8b5cf6; --sched-soft:#f5f3ff;
-    --radius:12px; --shadow:0 4px 6px -1px rgba(0,0,0,0.05), 0 10px 25px -3px rgba(0,0,0,0.08);
+    --radius:14px; --shadow:0 4px 6px -1px rgba(15,23,42,0.05), 0 18px 45px -12px rgba(15,23,42,0.16);
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;height:100%;background:var(--bg);overflow:hidden;
@@ -172,6 +172,19 @@
     backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:100px;
     padding:6px 14px;box-shadow:var(--shadow);}
   #controlshint b{color:var(--ink);font-weight:600;}
+  @media (max-width:900px){
+    #topbar{padding:12px 14px}.topbar-right{display:none}#wordmark span{display:none}
+    #left-panel{left:12px;top:62px;bottom:auto;width:260px;max-height:38vh}
+    #detail-card{left:12px;bottom:112px;width:calc(100vw - 24px);max-width:none}
+    #dissectwrap{left:12px;transform:none;bottom:12px;width:calc(100vw - 24px);padding:10px 18px 24px}
+    #controlshint{display:none}.stop .lbl{font-size:9px}.tag3d .tag-inner{font-size:9px}
+  }
+  @media (max-width:600px){
+    #left-panel{right:12px;width:auto;max-height:30vh}.panel-hint{display:none}
+    .detail-body{grid-template-columns:1fr}.dissect-instructions{display:none}
+    .stop .lbl{max-width:52px;text-align:center;white-space:normal;line-height:1.05}
+  }
+  @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}.comp-item,.tag3d,.tour-btn{transition:none!important}}
 </style>
 </head>
 <body>
@@ -188,6 +201,7 @@
   </div>
 
   <div class="topbar-right">
+    <div id="stagepill"><b id="stagename">Closed Card</b></div>
     <div id="social-pill">
   <a href="https://github.com/ujwal-s-r" target="_blank" rel="noopener noreferrer" title="GitHub Profile">
     <img src="git.png" alt="GitHub" class="social-icon">
@@ -259,14 +273,18 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xf8fafc);
 
 const camera = new THREE.PerspectiveCamera(35, window.innerWidth/window.innerHeight, 0.1, 400);
-const renderer = new THREE.WebGLRenderer({antialias:true});
+const renderer = new THREE.WebGLRenderer({antialias:true, powerPreference:'high-performance'});
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.08;
+renderer.physicallyCorrectLights = true;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 stageEl.appendChild(renderer.domElement);
 
-scene.add(new THREE.AmbientLight(0xffffff, 0.85));
+scene.add(new THREE.HemisphereLight(0xffffff, 0xcbd5e1, 1.4));
 const key = new THREE.DirectionalLight(0xffffff, 1.15);
 key.position.set(14, 22, 16); key.castShadow = true;
 key.shadow.mapSize.set(2048, 2048);
@@ -282,10 +300,15 @@ scene.add(fill);
 const rim = new THREE.DirectionalLight(0x76b900, 0.4);
 rim.position.set(0, -8, 14);
 scene.add(rim);
+const studioGlow = new THREE.PointLight(0x38bdf8, 0.75, 35);
+studioGlow.position.set(-8, 7, 8); scene.add(studioGlow);
 
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(240,240), new THREE.ShadowMaterial({opacity:0.07}));
 ground.rotation.x = -Math.PI/2; ground.position.y = -2.4; ground.receiveShadow = true;
 scene.add(ground);
+const grid = new THREE.GridHelper(50, 50, 0xcbd5e1, 0xe8eef5);
+grid.position.y = -2.38; grid.material.transparent = true; grid.material.opacity = 0.32;
+scene.add(grid);
 
 /* =========================================================================
    MATERIALS
@@ -323,8 +346,20 @@ const M = {
   l1cache: new THREE.MeshStandardMaterial({color:0x6366f1, roughness:0.3, metalness:0.4, emissive:0x4f46e5, emissiveIntensity:0.35}),
 };
 
-function box(w,h,d,mat){ return new THREE.Mesh(new THREE.BoxGeometry(w,h,d), mat); }
+function box(w,h,d,mat){
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w,h,d,2,1,2), mat);
+  mesh.castShadow = true; mesh.receiveShadow = true;
+  return mesh;
+}
 function cyl(r1,r2,h,seg,mat){ return new THREE.Mesh(new THREE.CylinderGeometry(r1,r2,h,seg), mat); }
+function addTechnicalEdges(group, opacity=.22){
+  group.traverse(obj=>{
+    if(!obj.isMesh || obj.userData.noEdges) return;
+    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(obj.geometry, 28),
+      new THREE.LineBasicMaterial({color:0x94a3b8,transparent:true,opacity,depthWrite:false}));
+    edges.userData.noEdges = true; obj.add(edges);
+  });
+}
 
 const root = new THREE.Group();
 scene.add(root);
@@ -367,6 +402,12 @@ const fanRotators = [];
   fanAssembly.userData.tagId = 'fans';
   shroudGroup.add(fanAssembly);
   fanRotators.push(fanAssembly);
+});
+[-2.4,2.4].forEach(fx=>{
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(1.5,0.055,10,64),
+    fadeMat({color:0x6b7280,roughness:.2,metalness:.9}));
+  ring.rotation.x=Math.PI/2; ring.position.set(fx,.57,0); ring.userData.tagId='fans';
+  shroudGroup.add(ring);
 });
 
 for(let g=-1.4; g<=1.4; g+=0.28){
@@ -426,6 +467,15 @@ pcbGroup.userData = { id:'pcb', range:[0.22, 0.40], origin:new THREE.Vector3(0, 
 const pcbBoard = box(CARD_W-0.2, 0.12, CARD_D-0.15, M.pcb);
 pcbBoard.castShadow = true; pcbBoard.receiveShadow = true; pcbBoard.userData.tagId = 'pcb';
 pcbGroup.add(pcbBoard);
+const traceMat = new THREE.LineBasicMaterial({color:0x34d399,transparent:true,opacity:.42});
+for(let i=0;i<18;i++){
+  const z=-1.48+i*.17, bend=(i%3-1)*.18;
+  const geo=new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(-4.7,.073,z),new THREE.Vector3(-2.8,.073,z),
+    new THREE.Vector3(-2.35,.073,z+bend),new THREE.Vector3(2.55,.073,z+bend),
+    new THREE.Vector3(2.95,.073,z)]);
+  const trace=new THREE.Line(geo,traceMat); trace.userData.noEdges=true; pcbGroup.add(trace);
+}
 
 const vramChips = [];
 const vramPositions = [
@@ -470,6 +520,10 @@ const l2slab = box(1.6, 0.14, 0.45, M.l2);
 l2slab.position.set(0, 0.24, 0); l2slab.castShadow = true; l2slab.userData.tagId = 'l2';
 
 packageGroup.add(substrate, dieMesh, l2slab);
+const dieGridMat=fadeMat({color:0x38bdf8,roughness:.25,metalness:.45,emissive:0x0369a1,emissiveIntensity:.45});
+for(let x=-.66;x<=.66;x+=.22) for(let z=-.66;z<=.66;z+=.22){
+  const tile=box(.16,.025,.16,dieGridMat); tile.position.set(x,.205,z); tile.userData.tagId='die'; packageGroup.add(tile);
+}
 packageGroup.position.copy(packageGroup.userData.origin);
 root.add(packageGroup);
 
@@ -562,6 +616,8 @@ subcorePositions.forEach(([scX, scZ], scIdx)=>{
 smGroup.position.copy(smGroup.userData.origin);
 smGroup.scale.set(0.001, 0.001, 0.001);
 root.add(smGroup);
+[shroudGroup,heatsinkGroup,backplateGroup,pcbGroup,packageGroup,gpcGroup,smGroup]
+  .forEach((g,i)=>addTechnicalEdges(g,i===4||i===6?.32:.18));
 
 /* =========================================================================
    GLOWING SELECTION HIGHLIGHT RIG
@@ -652,10 +708,10 @@ const componentData = {
     specs: '<b>Layers:</b> 16 High-Density | <b>Traces:</b> High-Frequency PCIe Gen5 & GDDR6X'
   },
   vram: {
-    title: 'VRAM / HBM3 Memory (8 Modules)', badge: 'Memory', type: 'mem',
+    title: 'GDDR6X VRAM (8 Packages)', badge: 'Memory', type: 'mem',
     stage: 2, anchor: vramChips[0],
-    desc: 'High-Bandwidth Global VRAM. Holds weights, activations, and KV Cache. Streams data to on-die caches at ~3.35 TB/s (400-800 cycles away).',
-    specs: '<b>Bandwidth:</b> 3.35 TB/s | <b>Capacity:</b> 80-144 GB | <b>Latency:</b> 400-800 cyc'
+    desc: 'Off-die graphics memory that stores model weights, activations, KV cache, textures, and frame buffers. Eight packages are shown as a visual abstraction; exact capacity and bandwidth depend on the GPU SKU.',
+    specs: '<b>Type:</b> GDDR6X concept | <b>Bus:</b> SKU-dependent | <b>Latency:</b> Hundreds of cycles'
   },
   vrm: {
     title: '24-Phase Digital VRM Power', badge: 'Power', type: 'default',
@@ -666,14 +722,14 @@ const componentData = {
   die: {
     title: 'Monolithic TSMC 4nm Silicon Die', badge: 'Silicon', type: 'default',
     stage: 3, anchor: dieMesh,
-    desc: 'Massive monolithic silicon die housing 80+ billion transistors, 6-8 GPCs, and the unified L2 Cache Crossbar.',
-    specs: '<b>Die Area:</b> 814 mm² | <b>Process:</b> TSMC 4N | <b>Transistors:</b> 80+ Billion'
+    desc: 'Conceptual monolithic NVIDIA-class GPU die containing GPCs, memory controllers, cache, interconnect, and fixed-function engines. Values vary significantly between architectures and SKUs.',
+    specs: '<b>Process:</b> Advanced-node concept | <b>Layout:</b> Not to scale | <b>Model:</b> Educational composite'
   },
   l2: {
     title: '50MB Unified L2 Cache Crossbar', badge: 'Memory', type: 'mem',
     stage: 3, anchor: l2slab,
-    desc: 'Die-level shared SRAM cache that arbitrates all memory traffic between GPCs and VRAM, avoiding slow off-chip memory trips.',
-    specs: '<b>Capacity:</b> 50 MB | <b>Bandwidth:</b> ~6.0 TB/s | <b>Latency:</b> 150-200 cyc'
+    desc: 'Die-level shared SRAM that reduces off-chip traffic and connects compute partitions with memory controllers through the on-chip fabric.',
+    specs: '<b>Capacity:</b> Architecture-dependent | <b>Role:</b> Shared last-level cache | <b>Latency:</b> Lower than VRAM'
   },
   gpc0: {
     title: 'GPC Cluster 0 (GPU Processing Cluster)', badge: 'Compute', type: 'default',
@@ -1225,6 +1281,8 @@ function animate(){
   updateExplode();
   updateCamera();
   update3DTags();
+  highlightMesh.material.opacity = 0.68 + Math.sin(performance.now()*.004)*.18;
+  glowMesh.material.opacity = 0.16 + Math.sin(performance.now()*.004)*.07;
   renderer.render(scene, camera);
 }
 
@@ -1238,6 +1296,7 @@ window.addEventListener('resize', ()=>{
   applyCameraViewportOffset();
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 });
 </script>
 </body>
